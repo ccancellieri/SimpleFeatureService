@@ -4,27 +4,20 @@ import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.MalformedURLException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 import javax.servlet.http.HttpServletRequest;
 
 import org.apache.commons.io.IOUtils;
-import org.codehaus.jackson.map.util.JSONWrappedObject;
 import org.geotools.data.DataStore;
-import org.geotools.data.simple.SimpleFeatureCollection;
+import org.geotools.data.Query;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.json.simple.JSONArray;
-import org.json.simple.parser.JSONParser;
 import org.opengis.feature.simple.SimpleFeatureType;
-import org.opengis.feature.type.Name;
-import org.opengis.feature.type.Schema;
-import org.opengis.filter.Filter;
+import org.opengis.filter.sort.SortOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -91,19 +84,9 @@ public class SFSController {
 			dataStore = DataStoreUtils.getDataStore(prop);
 //			 for (Name s:dataStore.getNames())
 //				 LOGGER.info(s.getURI());
-			final SimpleFeatureSource featureSource = dataStore
-					.getFeatureSource(prop.getProperty("FeatureName"));
 
-			SimpleFeatureType schema=dataStore.getSchema(prop.getProperty("FeatureName"));
+			return JSONUtils.writeCapabilities(dataStore);
 			
-			SimpleFeatureCollection featureCollection = GTTools
-					.getCollection(featureSource,  GTTools.buildQuery(request, schema).getFilter());
-//							DataStoreUtils.getFilter(
-//							"bk_gaul", new String[] { "100" })); // TODO better
-																	// filter
-			
-			
-			return JSONUtils.writeCapabilities(featureCollection);
 
 		} catch (MalformedURLException e) {
 			LOGGER.error(e.getMessage(), e);
@@ -135,17 +118,8 @@ public class SFSController {
 			prop = DataStoreUtils.loadPropertiesFromURL(new File(
 					"src/main/resources/datastore.properties").toURI().toURL());// TODO
 			dataStore = DataStoreUtils.getDataStore(prop);
-//			 for (Name s:dataStore.getNames())
-//				 LOGGER.info(s.getURI());
-//			final SimpleFeatureSource featureSource = dataStore
-//					.getFeatureSource(prop.getProperty("FeatureName"));
 
-//			SimpleFeatureCollection featureCollection = GTTools
-//					.getCollection(featureSource, GTTools.buildQuery(request, schema).getFilter()); // TODO better
-//																	// filter
-			
-			
-			return JSONUtils.getDescriptor(dataStore.getSchema(prop.getProperty("FeatureName")));
+			return JSONUtils.getDescriptor(dataStore.getSchema(layerName));
 
 		} catch (MalformedURLException e) {
 			LOGGER.error(e.getMessage(), e);
@@ -177,10 +151,6 @@ public class SFSController {
 		}
 	}
 
-	public enum OrderType {
-		DESC, ASC
-	}
-
 	public enum QueryableType {
 		eq, // equal to
 		ne, // not equal to
@@ -191,55 +161,59 @@ public class SFSController {
 		like, //
 		ilike, //
 	}
-
-	@RequestMapping(value = "/data/{layername}", method = RequestMethod.GET)
-	public @ResponseBody
-	Object getData(
+	
+	@RequestMapping(value = {"/data/{layername}"}, method = RequestMethod.GET)
+	public @ResponseBody Object getData(
+			
 			@PathVariable(value = "layername") String layerName,
+			/**
+			 * @see getDataFid(...)
+			 */
+			String fid,
 			/**
 			 * no_geom=true: so that the returned feature has no geometry
 			 * ("geometry": null)xm
 			 */
-			@RequestParam(value = "no_geom", required = false, defaultValue = "false") Boolean no_geom,
+			@RequestParam(value = "no_geom", required = false, defaultValue = "false") boolean noGeom,
 			/**
 			 * attrs={field1}[,{field2},...]: to restrict the list of properties
 			 * returned in the feature
 			 */
-			@RequestParam(value = "attrs", required = false) String attrs,
+			@RequestParam(value = "attrs", required = false) String[] attrs,
 			// limit the number of features to num features
 			// (maxfeatures is an alias to limit)
-			@RequestParam(value = "limit", required = false, defaultValue = "1") int limit,
+			@RequestParam(value = "limit", required = false, defaultValue = "-1") Integer limit,
 			// skip num features
-			@RequestParam(value = "offset", required = false, defaultValue = "0") int offset,
+			@RequestParam(value = "offset", required = false, defaultValue = "0") Integer offset,
 			// order the features using field
-			@RequestParam(value = "order_by", required = false) String order_by,
+			@RequestParam(value = "order_by", required = false) String[] orderBy,
 			// determine the ordering direction (applies only
 			// if orderby_is specified)
-			@RequestParam(value = "dir", required = false, defaultValue = "ASC") OrderType dir,
+			@RequestParam(value = "dir", required = false, defaultValue = "ASC") SortOrder[] directions,
 			/**
 			 * lon={x}: the x coordinate of the center of the search region,
 			 * this coord's projection system can be specified with the epsg
 			 * parameter
 			 */
-			@RequestParam(value = "lon", required = false) Number lon,
+			@RequestParam(value = "lon", required = false) String lon,
 			/**
 			 * lat={y}: the y coordinate of the center of the search region,
 			 * this coord's projection system can be specified with the epsg
 			 * parameter
 			 */
-			@RequestParam(value = "lat", required = false) Number lat,
+			@RequestParam(value = "lat", required = false) String lat,
 			/**
 			 * tolerance={num}: the tolerance around the center of the search
 			 * region, expressed in the units of the lon/lat coords' projection
 			 * system
 			 */
-			@RequestParam(value = "tolerance", required = false) Number tolerance,
+			@RequestParam(value = "tolerance", required = false) Double tolerance,
 			/**
 			 * box={xmin,ymin,xmax,ymax}: a list of coordinates representing a
 			 * bounding box, the coords' projection system can be specified with
 			 * the epsg parameter
 			 */
-			@RequestParam(value = "box", required = false) String box,
+			@RequestParam(value = "box", required = false) String bbox,
 			/**
 			 * geometry={geojson}: a GeoJSON string representing a geometry, the
 			 * coords' projection system can be specified with the epsg
@@ -249,12 +223,12 @@ public class SFSController {
 			/**
 			 * crs={num}: the EPSG code of the lon, lat or box values
 			 */
-			@RequestParam(value = "crs", required = false) Number crs,
+			@RequestParam(value = "crs", required = false) String crs,
 			/**
 			 * queryable={field1}[,{field2},...]}: the names of the feature
 			 * fields that can be queried
 			 */
-			@RequestParam(value = "queryable", required = false) String queryable,
+			@RequestParam(value = "queryable", required = false) String[] queryable,
 			/**
 			 * {field}_{query_op}={value}: specify a filter expression, field
 			 * must be in the list of fields specified by queryable, supported
@@ -289,10 +263,14 @@ public class SFSController {
 			// for (Name s:dataStore.getNames())
 			// LOGGER.info(s.getURI());
 			final SimpleFeatureSource featureSource = dataStore
-					.getFeatureSource(prop.getProperty("FeatureName"));
-			SimpleFeatureType schema=dataStore.getSchema(prop.getProperty("FeatureName"));
+					.getFeatureSource(layerName);
+			SimpleFeatureType schema=dataStore.getSchema(layerName);
+			
+			Query query=GTTools.buildQuery(request.getParameterMap(), attrs, fid, queryable, crs, orderBy, directions, noGeom, geometry, tolerance, bbox, lon, lat, offset, limit, schema);
+			
 			sw = new StringWriter();
-
+			
+			
 			switch (mode) {
 			case bounds:
 				// FeatureSource.getFeatures(Query/Filter)
@@ -303,8 +281,11 @@ public class SFSController {
 				// down the view params contained in the
 				// Hints.VIRTUAL_TABLE_PARAMETERS hint.
 				// TODO checkQueryParams(request);
-				return it.geosolutions.sfs.controller.JSONUtils.getBB(
-						GTTools.getBB(featureSource, GTTools.buildQuery(request, schema).getFilter()));
+				
+
+//				Filter filter=GTTools.buildQuery(params, attrs, fid, queryable, crs, orderBy, directions, noGeom, geometry, tolerance, bbox, lon, lat, offset, limit, 1,schema).getFilter();
+				
+				return it.geosolutions.sfs.controller.JSONUtils.getBB(GTTools.getBB(featureSource, query));
 
 			case features:
 				// FeatureSource.getFeatures(Query/Filter)
@@ -315,16 +296,16 @@ public class SFSController {
 				// down the view params contained in the
 				// Hints.VIRTUAL_TABLE_PARAMETERS hint.
 				it.geosolutions.sfs.controller.JSONUtils
-						.writeFeatureCollection(GTTools.getCollection(featureSource, GTTools.buildQuery(request, schema).getFilter()),
-//								DataStoreUtils.getFilter("bk_gaul", new String[] { "100" }
-								true, sw); // TODO better filter
+						.writeFeatureCollection(GTTools.getCollection(featureSource,query),
+								true, sw);
 				return sw.toString();
 
 			case count:
 				// FeatureSoruce.getCount(Query)
 				// /data/layername?mode=count&...
 				// Should also pass down the hints
-				return GTTools.getCount(featureSource, GTTools.buildQuery(request, schema).getFilter());
+				return GTTools.getCount(featureSource, query);
+						//GTTools.buildQuery(request, schema).getFilter());
 
 			default:
 				return "EMPTY"; // TODO
@@ -350,6 +331,30 @@ public class SFSController {
 		// return layerName;// TODO
 	}
 
+	@RequestMapping(value = {"/data/{layername}/{fid}"}, method = RequestMethod.GET)
+	public @ResponseBody
+	Object getDataFid(
+			@PathVariable(value = "layername") String layerName,
+			@PathVariable(value = "fid") String fid,
+			@RequestParam(value = "no_geom", required = false, defaultValue = "false") boolean noGeom,
+			@RequestParam(value = "attrs", required = false) String[] attrs,
+			@RequestParam(value = "limit", required = false, defaultValue = "1") Integer limit,
+			@RequestParam(value = "offset", required = false, defaultValue = "0") Integer offset,
+			@RequestParam(value = "order_by", required = false) String[] orderBy,
+			@RequestParam(value = "dir", required = false, defaultValue = "ASC") SortOrder[] directions,
+			@RequestParam(value = "lon", required = false) String lon,
+			@RequestParam(value = "lat", required = false) String lat,
+			@RequestParam(value = "tolerance", required = false) Double tolerance,
+			@RequestParam(value = "box", required = false) String bbox,
+			@RequestParam(value = "geometry", required = false) String geometry,
+			@RequestParam(value = "crs", required = false) String crs,
+			@RequestParam(value = "queryable", required = false) String[] queryable,
+			@RequestParam(value = "mode", required = false, defaultValue = "features") ModeType mode,
+			@RequestParam(value = "hints", required = false) String hints,
+			HttpServletRequest request) {
+		return getData(layerName, fid, noGeom, attrs, limit, offset, orderBy, directions, lon, lat, tolerance, bbox, geometry, crs, queryable, mode, hints, request);
+	}
+	
 	/**
 	 * {field}_{query_op}={value}: specify a filter expression, field must be in
 	 * the list of fields specified by queryable, supported query_op's are: eq:

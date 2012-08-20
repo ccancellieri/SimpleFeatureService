@@ -6,10 +6,9 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import net.sf.json.JSONException;
-
+import org.geotools.data.DataStore;
 import org.geotools.data.simple.SimpleFeatureCollection;
-import org.geotools.data.simple.SimpleFeatureIterator;
+import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.geojson.feature.FeatureJSON;
 import org.geotools.referencing.CRS;
 import org.json.simple.JSONArray;
@@ -18,6 +17,7 @@ import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.AttributeDescriptor;
 import org.opengis.geometry.BoundingBox;
 import org.opengis.referencing.FactoryException;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
@@ -84,13 +84,23 @@ public abstract class JSONUtils {
         }
     }
 	
-	protected static JSONArray writeCapabilities(SimpleFeatureCollection featureCollection) throws Exception {
+	protected static JSONArray writeCapabilities(DataStore dataStore) throws Exception {
 		JSONArray array=new JSONArray();
+		for (String name:dataStore.getTypeNames()){
+			SimpleFeatureType schema=dataStore.getSchema(name);
+			try {
+				array.add(toJSON(schema,dataStore.getFeatureSource(name)));
+			} catch (IOException e){
+				// skip
+			}
+			
+		}
+		
         // write out the layers
-        for (SimpleFeatureIterator it = featureCollection.features(); it.hasNext();) {
-            SimpleFeature feature = it.next();
-        	array.add(toJSON(feature));
-        }
+//        for (SimpleFeatureIterator it = featureCollection.features(); it.hasNext();) {
+//            SimpleFeature feature = it.next();
+//        	array.add(toJSON(feature));
+//        }
         return array;
 	}
 	
@@ -102,12 +112,50 @@ public abstract class JSONUtils {
      * @return
      * @throws IOException
      */
-    private static Map<String,Object> toJSON(SimpleFeature layerInfo) throws IOException {
+    protected static Map<String,Object> toJSON(SimpleFeatureType layerInfo, SimpleFeatureSource fs) throws IOException {
         
-
         try {
             Map<String,Object> json = new LinkedHashMap<String,Object>();
             json.put("name", layerInfo.getName().getLocalPart());
+            
+            try {
+                json.put("bbox", toJSON(fs.getBounds()));
+            } catch(Exception e) {
+                throw ((IOException) new IOException("Failed to get the resource bounding box of:" + layerInfo.getName()).initCause(e));
+            }
+           
+            CoordinateReferenceSystem crs=layerInfo.getCoordinateReferenceSystem();
+            String srs=null;
+            if (crs!=null)
+            	json.put("crs", "urn:ogc:def:crs:EPSG:"+CRS.lookupEpsgCode(crs, false));
+            else
+                throw ((IOException) new IOException("Failed to get the resource crs:" + layerInfo.getName()));
+            
+            json.put("axisorder", "xy");
+
+            return json;
+        } catch (FactoryException e) {
+            throw ((IOException) new IOException("Failed to lookup the EPSG code").initCause(e));
+        }
+    }
+    
+   
+	/**
+     * Maps a layer info to the capabilities json structure. Using a linked hash map under covers to
+     * preserve the order of the attributes
+     * 
+     * @param layerInfo
+     * @return
+     * @throws IOException
+     */
+    protected static Map<String,Object> toJSON(SimpleFeature layerInfo) throws IOException {
+        
+//    	SimpleFeatureType schema=dataStore.getSchema(prop.getProperty("FeatureName"));
+        try {
+            Map<String,Object> json = new LinkedHashMap<String,Object>();
+            json.put("name", layerInfo.getName().getLocalPart());
+//            json.put("name", schema.getName().getLocalPart());
+            
             try {
                 json.put("bbox", toJSON(layerInfo.getBounds()));
             } catch(Exception e) {
@@ -121,6 +169,7 @@ public abstract class JSONUtils {
             throw ((IOException) new IOException("Failed to lookup the EPSG code").initCause(e));
         }
     }
+    
 
     /**
      * Maps a referenced envelope into a json bbox
@@ -153,7 +202,7 @@ public abstract class JSONUtils {
         json.setEncodeFeatureCollectionBounds(!geometryless);
         json.setEncodeFeatureCollectionCRS(!geometryless);
         json.writeFeatureCollection(featureCollection, outWriter);
-		
+//		
 //        GeoJSONBuilder jsonWriter = new GeoJSONBuilder(outWriter);
 //		//
 //		boolean hasGeom = false;
