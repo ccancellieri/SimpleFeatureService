@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions name="SFSController" targetNamespace="http://controller.sfs.geosolutions.it/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://controller.sfs.geosolutions.it/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
+  <wsdl:types>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="http://controller.sfs.geosolutions.it/" attributeFormDefault="unqualified" elementFormDefault="unqualified" targetNamespace="http://controller.sfs.geosolutions.it/">
+    <xs:complexType abstract="true" name="number">
+        <xs:sequence/>
+    </xs:complexType>
+    <xs:simpleType name="orderType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="DESC"/>
+            <xs:enumeration value="ASC"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="modeType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="features"/>
+            <xs:enumeration value="count"/>
+            <xs:enumeration value="bounds"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:element name="getSchema" type="getSchema"/>
+    <xs:complexType name="getSchema">
+        <xs:sequence>
+            <xs:element minOccurs="0" name="layerName" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:element name="getSchemaResponse" type="getSchemaResponse"/>
+    <xs:complexType name="getSchemaResponse">
+        <xs:sequence>
+            <xs:element minOccurs="0" name="return" type="xs:anyType"/>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:element name="getData" type="getData"/>
+    <xs:complexType name="getData">
+        <xs:sequence>
+            <xs:element minOccurs="0" name="layerName" type="xs:string"/>
+            <xs:element minOccurs="0" name="no_geom" type="xs:boolean"/>
+            <xs:element minOccurs="0" name="attrs" type="xs:string"/>
+            <xs:element name="limit" type="xs:int"/>
+            <xs:element name="offset" type="xs:int"/>
+            <xs:element minOccurs="0" name="order_by" type="xs:string"/>
+            <xs:element minOccurs="0" name="dir" type="orderType"/>
+            <xs:element minOccurs="0" name="lon" type="number"/>
+            <xs:element minOccurs="0" name="lat" type="number"/>
+            <xs:element minOccurs="0" name="tolerance" type="number"/>
+            <xs:element minOccurs="0" name="box" type="xs:string"/>
+            <xs:element minOccurs="0" name="geometry" type="xs:string"/>
+            <xs:element minOccurs="0" name="crs" type="number"/>
+            <xs:element minOccurs="0" name="queryable" type="xs:string"/>
+            <xs:element minOccurs="0" name="mode" type="modeType"/>
+            <xs:element minOccurs="0" name="hints" type="xs:string"/>
+            <xs:element minOccurs="0" name="request"/>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:element name="getDataResponse" type="getDataResponse"/>
+    <xs:complexType name="getDataResponse">
+        <xs:sequence>
+            <xs:element minOccurs="0" name="return" type="xs:anyType"/>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:element name="getTypeNames" type="getTypeNames"/>
+    <xs:complexType name="getTypeNames">
+        <xs:sequence/>
+    </xs:complexType>
+    <xs:element name="getTypeNamesResponse" type="getTypeNamesResponse"/>
+    <xs:complexType name="getTypeNamesResponse">
+        <xs:sequence>
+            <xs:element maxOccurs="unbounded" minOccurs="0" name="return" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+</xs:schema>
+  </wsdl:types>
+  <wsdl:message name="getTypeNamesResponse">
+    <wsdl:part name="parameters" element="tns:getTypeNamesResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="getData">
+    <wsdl:part name="parameters" element="tns:getData">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="getSchemaResponse">
+    <wsdl:part name="parameters" element="tns:getSchemaResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="getDataResponse">
+    <wsdl:part name="parameters" element="tns:getDataResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="getTypeNames">
+    <wsdl:part name="parameters" element="tns:getTypeNames">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="getSchema">
+    <wsdl:part name="parameters" element="tns:getSchema">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:portType name="SFSControllerPortType">
+    <wsdl:operation name="getSchema">
+      <wsdl:input name="getSchema" message="tns:getSchema">
+    </wsdl:input>
+      <wsdl:output name="getSchemaResponse" message="tns:getSchemaResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="getData">
+      <wsdl:input name="getData" message="tns:getData">
+    </wsdl:input>
+      <wsdl:output name="getDataResponse" message="tns:getDataResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="getTypeNames">
+      <wsdl:input name="getTypeNames" message="tns:getTypeNames">
+    </wsdl:input>
+      <wsdl:output name="getTypeNamesResponse" message="tns:getTypeNamesResponse">
+    </wsdl:output>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="SFSControllerSoapBinding" type="tns:SFSControllerPortType">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="getSchema">
+      <soap:operation soapAction="" style="document"/>
+      <wsdl:input name="getSchema">
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="getSchemaResponse">
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="getData">
+      <soap:operation soapAction="" style="document"/>
+      <wsdl:input name="getData">
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="getDataResponse">
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="getTypeNames">
+      <soap:operation soapAction="" style="document"/>
+      <wsdl:input name="getTypeNames">
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="getTypeNamesResponse">
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="SFSController">
+    <wsdl:port name="SFSControllerPort" binding="tns:SFSControllerSoapBinding">
+      <soap:address location="http://localhost:9090/SFSControllerPort"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>
