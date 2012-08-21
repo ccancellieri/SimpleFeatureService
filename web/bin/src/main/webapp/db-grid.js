@@ -1,6 +1,6 @@
 Ext.require(['Ext.data.*', 'Ext.grid.*']);
 
-Ext.define('Person', {
+Ext.define('Layers', {
     extend: 'Ext.data.Model',
     fields: [{
         name: 'id',
@@ -16,13 +16,13 @@ Ext.onReady(function() {
     var store = Ext.create('Ext.data.Store', {
         autoLoad: true,
         autoSync: true,
-        model: 'Person',
+        model: 'Layers',
         proxy: {
             type: 'rest',
-            url: 'http://localhost:8080/sfs/book/names.json',
+            url: 'http://localhost:8082/sfs/capabilities',
             reader: {
                 type: 'json',
-                root: 'bookList'
+                root: 'capabilities'
             },
             writer: {
                 type: 'json'
@@ -35,7 +35,7 @@ Ext.onReady(function() {
         width: 200,
         height: 200,
         frame: true,
-        title: 'Books',
+        title: 'Layers',
         store: store,
         columns: [{
             text: 'ID',

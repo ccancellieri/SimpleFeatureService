@@ -1,11 +1,6 @@
 package it.geosolutions.sfs.client;
 
-import it.geosolutions.sfs.client.utils.Books;
-import it.geosolutions.sfs.model.Book;
-
-import java.util.ArrayList;
-import java.util.List;
-
+import org.json.simple.JSONArray;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -27,20 +22,9 @@ public class RestClientTest {
 	@Test
 	public void restJsonClientTest() {
 		
-		Books booksAux = restTemplate.getForObject("http://localhost:8080/sfs/book/names.json", Books.class);
-		List<Book> books = booksAux.getBooks();
+		JSONArray array = restTemplate.getForObject("http://localhost:8082/sfs/capabilities", JSONArray.class);
 		
-		Assert.assertNotNull(books);
-		Assert.assertTrue(books.size() > 0);
-	}
-	
-	@SuppressWarnings("unchecked")
-	@Test
-	public void restXmlClientTest() {
-		
-		List<Book> books = (ArrayList<Book>) restTemplate.getForObject("http://localhost:8080/sfs/book/names.xml", List.class);
-		
-		Assert.assertNotNull(books);
-		Assert.assertTrue(books.size() > 0);
+		Assert.assertNotNull(array);
+		Assert.assertTrue(array.size() > 0);
 	}
 }
