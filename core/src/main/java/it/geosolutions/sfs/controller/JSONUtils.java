@@ -125,7 +125,6 @@ public abstract class JSONUtils {
             }
            
             CoordinateReferenceSystem crs=layerInfo.getCoordinateReferenceSystem();
-            String srs=null;
             if (crs!=null)
             	json.put("crs", "urn:ogc:def:crs:EPSG:"+CRS.lookupEpsgCode(crs, false));
             else
@@ -148,13 +147,11 @@ public abstract class JSONUtils {
      * @return
      * @throws IOException
      */
-    protected static Map<String,Object> toJSON(SimpleFeature layerInfo) throws IOException {
+    private static Map<String,Object> toJSON(SimpleFeature layerInfo) throws IOException {
         
-//    	SimpleFeatureType schema=dataStore.getSchema(prop.getProperty("FeatureName"));
         try {
             Map<String,Object> json = new LinkedHashMap<String,Object>();
             json.put("name", layerInfo.getName().getLocalPart());
-//            json.put("name", schema.getName().getLocalPart());
             
             try {
                 json.put("bbox", toJSON(layerInfo.getBounds()));

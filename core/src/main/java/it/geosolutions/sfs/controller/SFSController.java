@@ -86,7 +86,6 @@ public class SFSController {
 //				 LOGGER.info(s.getURI());
 
 			return JSONUtils.writeCapabilities(dataStore);
-			
 
 		} catch (MalformedURLException e) {
 			LOGGER.error(e.getMessage(), e);
