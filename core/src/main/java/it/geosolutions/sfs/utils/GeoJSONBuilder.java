@@ -52,7 +52,7 @@ public class GeoJSONBuilder extends JSONBuilder {
      * @return The JSONBuilder with the new geoemtry
      * @throws JSONException If anything goes wrong
      */
-    protected JSONBuilder writeGeom(Geometry geometry) throws JSONException {
+    public JSONBuilder writeGeom(Geometry geometry) throws JSONException {
         this.object();
         this.key("type");
         this.value(getGeometryName(geometry));
@@ -153,7 +153,7 @@ public class GeoJSONBuilder extends JSONBuilder {
      * @param env envelope representing bounding box
      * @return this
      */
-    protected JSONBuilder writeBoundingBox(BoundingBox env) {
+    public JSONBuilder writeBoundingBox(BoundingBox env) {
         this.key("bbox");
         this.array();
         this.value(env.getMinX());

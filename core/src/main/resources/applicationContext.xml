@@ -30,6 +30,11 @@
         <constructor-arg index="1" value="1" />
     </bean>
     
+    <bean id="DWFeatureFactory" class="it.geosolutions.sfs.data.dw.DWFeatureFactorySPI" >
+        <constructor-arg index="0" type="java.io.File" value="src/main/resources/datastore.properties" />
+        <constructor-arg index="1" value="2" />
+    </bean>
+    
     <!-- 
     <bean id="sfs-dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
         <property name="driverClassName" value="${jdbc.driver}"/>
