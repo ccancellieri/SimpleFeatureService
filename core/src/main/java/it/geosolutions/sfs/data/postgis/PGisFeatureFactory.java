@@ -5,10 +5,7 @@ import it.geosolutions.sfs.controller.SFSParamsModel.ModeType;
 import it.geosolutions.sfs.data.FeatureFactory;
 import it.geosolutions.sfs.utils.GTTools;
 
-import java.io.File;
-import java.io.IOException;
 import java.io.StringWriter;
-import java.net.MalformedURLException;
 import java.util.Properties;
 
 import javax.servlet.http.HttpServletRequest;
@@ -17,7 +14,6 @@ import org.apache.commons.io.IOUtils;
 import org.geotools.data.DataStore;
 import org.geotools.data.Query;
 import org.geotools.data.simple.SimpleFeatureSource;
-import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.filter.sort.SortOrder;
@@ -26,14 +22,13 @@ public class PGisFeatureFactory extends FeatureFactory {
 
 	private final Properties prop;
 	
-	private final static String IGNORE_NON_FATAL_ERRORS_KEY="ignoreNonFatalErrors";
-	private final boolean IGNORE_NON_FATAL_ERRORS;
+	public final static String IGNORE_NON_FATAL_ERRORS_KEY="ignoreNonFatalErrors";
+	public final boolean IGNORE_NON_FATAL_ERRORS;
 	
 	public PGisFeatureFactory(final Properties prop) throws Exception {
 		this.prop = prop;
 		
 		IGNORE_NON_FATAL_ERRORS=prop.getProperty(IGNORE_NON_FATAL_ERRORS_KEY,"false").equalsIgnoreCase("false")?false:true;
-		
 		
 	}
 
@@ -201,6 +196,10 @@ public class PGisFeatureFactory extends FeatureFactory {
 			if (dataStore != null)
 				dataStore.dispose();
 		}
+	}
+
+	public Properties getProp() {
+		return prop;
 	}
 
 //	/**

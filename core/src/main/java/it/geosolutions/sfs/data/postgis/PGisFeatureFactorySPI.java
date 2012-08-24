@@ -21,10 +21,6 @@ public class PGisFeatureFactorySPI extends FeatureFactorySPI {
 		return prop;
 	}
 
-	public void setProp(Properties prop) {
-		this.prop = prop;
-	}
-
 	/**
 	 * 
 	 */
