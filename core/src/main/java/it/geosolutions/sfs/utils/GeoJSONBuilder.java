@@ -3,22 +3,20 @@
  * This code is licensed under the GPL 2.0 license, availible at the root
  * application directory.
  */
-package it.geosolutions.sfs.controller;
+package it.geosolutions.sfs.utils;
 
 import java.io.Writer;
 import java.util.Calendar;
-import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import org.geotools.util.Converters;
-import org.opengis.geometry.BoundingBox;
 
 import net.sf.json.JSONException;
 import net.sf.json.util.JSONBuilder;
 
+import org.geotools.util.Converters;
+import org.opengis.geometry.BoundingBox;
+
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.CoordinateSequence;
-import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.LineString;
@@ -35,6 +33,7 @@ import com.vividsolutions.jts.geom.impl.CoordinateArraySequence;
  * against the draft 5 version of the spec on http://geojson.org
  *
  * @author Chris Holmes, The Open Planning Project
+ * @author Carlo Cancellieri
  * @version $Id$
  *
  */
@@ -53,7 +52,7 @@ public class GeoJSONBuilder extends JSONBuilder {
      * @return The JSONBuilder with the new geoemtry
      * @throws JSONException If anything goes wrong
      */
-    public JSONBuilder writeGeom(Geometry geometry) throws JSONException {
+    protected JSONBuilder writeGeom(Geometry geometry) throws JSONException {
         this.object();
         this.key("type");
         this.value(getGeometryName(geometry));
@@ -202,7 +201,7 @@ public class GeoJSONBuilder extends JSONBuilder {
     /** Internal representation of OGC SF MultiGeometry */
     protected static final int MULTIGEOMETRY = 7;
 
-    public static String getGeometryName(Geometry geometry) {
+    protected static String getGeometryName(Geometry geometry) {
         if (geometry instanceof Point) {
             return "Point";
         } else if (geometry instanceof LineString) {
@@ -229,7 +228,7 @@ public class GeoJSONBuilder extends JSONBuilder {
      *
      * @return int representation of Geometry
      */
-    public static int getGeometryType(Geometry geometry) {
+    protected static int getGeometryType(Geometry geometry) {
         //LOGGER.entering("GMLUtils", "getGeometryType", geometry);
         if (geometry instanceof Point) {
             //LOGGER.finest("found point");

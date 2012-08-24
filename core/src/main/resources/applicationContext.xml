@@ -23,6 +23,13 @@
         <property name="ignoreResourceNotFound" value="true" />
         <property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE"/>
     </bean>
+    
+    
+    <bean id="PGisFeatureFactory" class="it.geosolutions.sfs.data.postgis.PGisFeatureFactorySPI" >
+        <constructor-arg index="0" type="java.io.File" value="src/main/resources/datastore.properties" />
+        <constructor-arg index="1" value="1" />
+    </bean>
+    
     <!-- 
     <bean id="sfs-dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
         <property name="driverClassName" value="${jdbc.driver}"/>
@@ -30,29 +37,6 @@
         <property name="username" value="${jdbc.username}"/>
         <property name="password" value="${jdbc.password}"/>
     </bean>
-    
-    <bean id="listCapabilities" class="it.geosolutions.sfs.ListCapabilitiesEndpoint"/>
-    <sws:static-wsdl id="profile" location="wsdl/listCapabilitiesEndpoint.wsdl" />
-    
-	<bean class="org.springframework.ws.server.endpoint.mapping.PayloadRootAnnotationMethodEndpointMapping">
-        <description>An endpoint mapping strategy that looks for @Endpoint and @PayloadRoot annotations.</description>
-    </bean>
-
-    <bean class="org.springframework.ws.server.endpoint.adapter.method.MarshallingPayloadMethodProcessor">
-        <description>Enables the MessageDispatchServlet to invoke methods requiring OXM marshalling.</description>
-        <constructor-arg ref="xstreamMarshaller"/>
-    </bean>
-    
-    <bean id="xstreamMarshaller" class="org.springframework.oxm.xstream.XStreamMarshaller">
-        <property name="aliases">
-            <props> -->
-                <!-- prop key="Flight">org.springframework.oxm.xstream.Flight</prop-->
-<!--            </props>
-        </property>
-    </bean>
-     -->
-          
-          
-    
+    -->
    
 </beans>

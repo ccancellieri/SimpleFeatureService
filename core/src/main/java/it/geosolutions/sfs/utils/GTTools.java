@@ -1,4 +1,4 @@
-package it.geosolutions.sfs.controller;
+package it.geosolutions.sfs.utils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,7 +48,7 @@ import com.vividsolutions.jts.geom.Point;
  */
 public abstract class GTTools {
 
-	protected static int getCount(SimpleFeatureSource featureSource, Query query)
+	public static int getCount(SimpleFeatureSource featureSource, Query query)
 			throws IOException {
 		int count = featureSource.getCount(query);
 		if (count == -1) {
@@ -60,13 +60,7 @@ public abstract class GTTools {
 		return count;
 	}
 
-	protected static SimpleFeatureCollection getCollection(
-			SimpleFeatureSource featureSource, Query cql) throws IOException {
-		SimpleFeatureCollection collection = featureSource.getFeatures(cql);
-		return collection;
-	}
-
-	protected static BoundingBox getBB(SimpleFeatureSource featureSource,
+	public static BoundingBox getBB(SimpleFeatureSource featureSource,
 			Query query) throws IOException {
 		BoundingBox bounds = featureSource.getBounds(query);
 		if (bounds == null) {
@@ -99,7 +93,7 @@ public abstract class GTTools {
 	 * @param request
 	 * @return
 	 */
-	protected static Query buildQuery(Map params, String[] attrs, String fid, String[] queryable, String crs, String[] orderBy, SortOrder[] directions, boolean noGeom, String geometry, Double tolerance, String bbox, String lon, String lat, Integer offset, Integer limit, 
+	public static Query buildQuery(Map params, String[] attrs, String fid, String[] queryable, String crs, String[] orderBy, SortOrder[] directions, boolean noGeom, String geometry, Double tolerance, String bbox, String lon, String lat, Integer offset, Integer limit, 
 			SimpleFeatureType schema) {
 		Query query = new Query();
 		applyFilter(params, attrs, fid, queryable, crs, geometry, tolerance, bbox, lon, lat, schema, query);

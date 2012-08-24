@@ -1,18 +1,18 @@
 package it.geosolutions.sfs.controller;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.StringWriter;
-import java.net.MalformedURLException;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.Map;
-import java.util.Properties;
+import java.util.TreeSet;
+
+import it.geosolutions.sfs.controller.SFSParamsModel.ModeType;
+import it.geosolutions.sfs.data.FeatureFactory;
+import it.geosolutions.sfs.data.FeatureFactorySPI;
+import it.geosolutions.sfs.utils.JSONUtils;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.xml.ws.WebServiceException;
 
-import org.apache.commons.io.IOUtils;
-import org.geotools.data.DataStore;
-import org.geotools.data.Query;
-import org.geotools.data.simple.SimpleFeatureSource;
 import org.json.simple.JSONArray;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.filter.sort.SortOrder;
@@ -24,6 +24,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.context.ContextLoader;
+import org.springframework.web.context.WebApplicationContext;
+
 
 /**
  * OpenDataStore WebService
@@ -57,6 +60,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
  * 
  * @author Carlo Cancellieri - carlo.cancellieri@geo-solutions.it
  * 
+ * @TODO: versioning controller
  */
 
 @Controller
@@ -68,36 +72,67 @@ public class SFSController {
 	 */
 	private final static Logger LOGGER = LoggerFactory
 			.getLogger(SFSController.class);
+	
+	private FeatureFactory featureFactory;
+
+	public SFSController() throws Exception {
+		
+		// get context
+		WebApplicationContext context=ContextLoader.getCurrentWebApplicationContext();
+		
+		// get featureFactories
+		Map<String,FeatureFactorySPI> spiMap=context.getBeansOfType(FeatureFactorySPI.class);
+		
+		// order by priority
+		TreeSet<FeatureFactorySPI> spiOrderedMap=new TreeSet<FeatureFactorySPI>(new Comparator<FeatureFactorySPI>() {
+			@Override
+			public int compare(FeatureFactorySPI o1, FeatureFactorySPI o2) {
+				return o1.getPriority()>o2.getPriority()?1:-1;
+			}
+		});		
+		Iterator<FeatureFactorySPI> it=spiMap.values().iterator();
+		while (it.hasNext()){
+			FeatureFactorySPI spi=it.next();
+			if (spi.canCreate()){
+				spiOrderedMap.add(spi);				
+			}
+		}
+		
+		// check results and instantiate factory
+		if (spiOrderedMap.size()>0){
+			FeatureFactorySPI spi=null;
+			while (((spi=spiOrderedMap.pollFirst())!=null)){
+				try{
+					featureFactory = spi.getFeatureFactory();
+				} catch (Exception e){
+					LOGGER.error(e.getLocalizedMessage(),e);
+				}
+			}
+		}
+		if (featureFactory==null)
+			throw new WebServiceException("Unable to locate a valid "+FeatureFactory.class.getName());
+		
+	}
+
 
 	/**
 	 * /capabilities
 	 * 
 	 * @return DataStore.getTypeNames()
+	 * @throws Exception
 	 */
 	@RequestMapping(value = "/capabilities", method = RequestMethod.GET)
-	public @ResponseBody JSONArray getCapabilities(HttpServletRequest request) {
-		Properties prop = null;
-		DataStore dataStore = null;
+	public @ResponseBody
+	JSONArray getCapabilities(HttpServletRequest request)
+			throws WebServiceException {
 		try {
-			prop = DataStoreUtils.loadPropertiesFromURL(new File(
-					"src/main/resources/datastore.properties").toURI().toURL());// TODO
-			dataStore = DataStoreUtils.getDataStore(prop);
-//			 for (Name s:dataStore.getNames())
-//				 LOGGER.info(s.getURI());
-
-			return JSONUtils.writeCapabilities(dataStore);
-
-		} catch (MalformedURLException e) {
-			LOGGER.error(e.getMessage(), e);
-		} catch (IOException e) {
-			LOGGER.error(e.getMessage(), e);
+			return JSONUtils.writeCapabilities(LOGGER,featureFactory.getAllSchemas(),
+					featureFactory.getAllReferencedEnvelopes());
 		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-		} finally {
-			if (dataStore != null)
-				dataStore.dispose();
+			WebServiceException wse = new WebServiceException(
+					e.getLocalizedMessage(), e);
+			throw wse;
 		}
-		return new JSONArray(); // never here
 
 	}
 
@@ -107,63 +142,91 @@ public class SFSController {
 	 * 
 	 * @param layerName
 	 * @return DataStore.getSchema()
+	 * @throws Exception
 	 */
 	@RequestMapping(value = "/describe/{layername}", method = RequestMethod.GET)
 	public @ResponseBody
-	JSONArray getSchema(@PathVariable(value = "layername") String layerName) {
-		Properties prop = null;
-		DataStore dataStore = null;
+	JSONArray getSchema(@PathVariable(value = "layername") String layerName)
+			throws WebServiceException {
 		try {
-			prop = DataStoreUtils.loadPropertiesFromURL(new File(
-					"src/main/resources/datastore.properties").toURI().toURL());// TODO
-			dataStore = DataStoreUtils.getDataStore(prop);
+			SimpleFeatureType schema = featureFactory
+					.getSimpleFeatureType(layerName);
 
-			return JSONUtils.getDescriptor(dataStore.getSchema(layerName));
-
-		} catch (MalformedURLException e) {
-			LOGGER.error(e.getMessage(), e);
-		} catch (IOException e) {
-			LOGGER.error(e.getMessage(), e);
+			return JSONUtils.getDescriptor(schema);
 		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-		} finally {
-			if (dataStore != null)
-				dataStore.dispose();
+			WebServiceException wse = new WebServiceException(
+					e.getLocalizedMessage(), e);
+			throw wse;
 		}
-		return new JSONArray(); // never here
 
 	}
 
-	public enum ModeType {
-		features, count, bounds;
+	/**
+	 * 
+	 * @param layerName
+	 * @param fid
+	 * @param noGeom
+	 *            no_geom=true: so that the returned feature has no geometry
+	 *            ("geometry": null)xm
+	 * @param attrs
+	 *            attrs={field1}[,{field2},...]: to restrict the list of
+	 *            properties returned in the feature
+	 * @param limit
+	 *            limit the number of features to num features (maxfeatures is
+	 *            an alias to limit)
+	 * @param offset
+	 *            skip num features
+	 * @param orderBy
+	 *            order the features using field
+	 * @param directions
+	 *            determine the ordering direction (applies only if orderby_is
+	 *            specified)
+	 * @param lon
+	 *            lon={x}: the x coordinate of the center of the search region,
+	 *            this coord's projection system can be specified with the epsg
+	 *            parameter
+	 * @param lat
+	 *            lat={y}: the y coordinate of the center of the search region,
+	 *            this coord's projection system can be specified with the epsg
+	 *            parameter
+	 * @param tolerance
+	 *            tolerance={num}: the tolerance around the center of the search
+	 *            region, expressed in the units of the lon/lat coords'
+	 *            projection system
+	 * @param bbox
+	 *            box={xmin,ymin,xmax,ymax}: a list of coordinates representing
+	 *            a bounding box, the coords' projection system can be specified
+	 *            with the epsg parameter
+	 * @param geometry
+	 *            geometry={geojson}: a GeoJSON string representing a geometry,
+	 *            the coords' projection system can be specified with the epsg
+	 *            parameter
+	 * @param crs
+	 *            crs={num}: the EPSG code of the lon, lat or box values
+	 * @param queryable
+	 *            queryable={field1}[,{field2},...]}: the names of the feature
+	 *            fields that can be queried
+	 * @param mode
+	 *            mode. Can be features (default), count, bounds. In features
+	 *            mode it just returns the features in json format, in count
+	 *            mode it returns a count of the features satisfying the
+	 *            filters, in bounds mode it returns the bounding box of the
+	 *            features satisfying the filter as a json array
+	 * @param hints
+	 *            hints. A map providing implementation specific hints. The
+	 *            expected format is key1:value1;key2:value2;...
+	 * @param request
+	 *            contains the map with {field}_{query_op}={value}: specify a
+	 *            filter expression, field must be in the list of fields
+	 *            specified by queryable, supported query_op's are: eq: equal to
+	 *            ne: not equal to lt: lower than lte: lower than or equal to
+	 *            gt: greater than gte: greater than or equal to like ilike
+	 * @throws Exception
+	 */
+	@RequestMapping(value = { "/data/{layername}" }, method = RequestMethod.GET)
+	public @ResponseBody
+	Object getData(
 
-		public ModeType getMode(String mode) {
-			if (mode.equalsIgnoreCase("features")) {
-				return features;
-			} else if (mode.equalsIgnoreCase("count")) {
-				return count;
-			} else if (mode.equalsIgnoreCase("bounds")) {
-				return bounds;
-			} else {
-				return null;
-			}
-		}
-	}
-
-	public enum QueryableType {
-		eq, // equal to
-		ne, // not equal to
-		lt, // lower than
-		lte, // lower than or equal to
-		gt, // greater than
-		gte, // greater than or equal to
-		like, //
-		ilike, //
-	}
-	
-	@RequestMapping(value = {"/data/{layername}"}, method = RequestMethod.GET)
-	public @ResponseBody Object getData(
-			
 			@PathVariable(value = "layername") String layerName,
 			/**
 			 * @see getDataFid(...)
@@ -249,88 +312,26 @@ public class SFSController {
 			/**
 			 * hints. A map providing implementation specific hints. The
 			 * expected format is key1:value1;key2:value2;...
+			 * 
+			 * @throws Exception
 			 */
 			@RequestParam(value = "hints", required = false) String hints,
-			HttpServletRequest request) {
-		Properties prop = null;
-		DataStore dataStore = null;
-		StringWriter sw = null;
+			HttpServletRequest request) throws WebServiceException {
 		try {
-			prop = DataStoreUtils.loadPropertiesFromURL(new File(
-					"src/main/resources/datastore.properties").toURI().toURL());// TODO
-			dataStore = DataStoreUtils.getDataStore(prop);
-			// for (Name s:dataStore.getNames())
-			// LOGGER.info(s.getURI());
-			final SimpleFeatureSource featureSource = dataStore
-					.getFeatureSource(layerName);
-			SimpleFeatureType schema=dataStore.getSchema(layerName);
-			
-			Query query=GTTools.buildQuery(request.getParameterMap(), attrs, fid, queryable, crs, orderBy, directions, noGeom, geometry, tolerance, bbox, lon, lat, offset, limit, schema);
-			
-			sw = new StringWriter();
-			
-			
-			switch (mode) {
-			case bounds:
-				// FeatureSource.getFeatures(Query/Filter)
-				// /data/layername?mode=features&...
-				// Should take the filter and split it into two parts, the
-				// one natively supported, and the one that is
-				// performed later in memory. Also, it should pass
-				// down the view params contained in the
-				// Hints.VIRTUAL_TABLE_PARAMETERS hint.
-				// TODO checkQueryParams(request);
-				
+			SFSParamsModel params = new SFSParamsModel(layerName, fid, noGeom,
+					attrs, limit, offset, orderBy, directions, lon, lat,
+					tolerance, bbox, geometry, crs, queryable, mode, hints,
+					request);
 
-//				Filter filter=GTTools.buildQuery(params, attrs, fid, queryable, crs, orderBy, directions, noGeom, geometry, tolerance, bbox, lon, lat, offset, limit, 1,schema).getFilter();
-				
-				return it.geosolutions.sfs.controller.JSONUtils.getBB(GTTools.getBB(featureSource, query));
-
-			case features:
-				// FeatureSource.getFeatures(Query/Filter)
-				// /data/layername?mode=features&...
-				// Should take the filter and split it into two parts, the
-				// one natively supported, and the one that is
-				// performed later in memory. Also, it should pass
-				// down the view params contained in the
-				// Hints.VIRTUAL_TABLE_PARAMETERS hint.
-				it.geosolutions.sfs.controller.JSONUtils
-						.writeFeatureCollection(GTTools.getCollection(featureSource,query),
-								true, sw);
-				return sw.toString();
-
-			case count:
-				// FeatureSoruce.getCount(Query)
-				// /data/layername?mode=count&...
-				// Should also pass down the hints
-				return GTTools.getCount(featureSource, query);
-						//GTTools.buildQuery(request, schema).getFilter());
-
-			default:
-				return "EMPTY"; // TODO
-
-			}
+			return featureFactory.getData(params);
 		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-		} catch (Throwable e) {
-			LOGGER.error(e.getMessage(), e);
-		} finally {
-			if (dataStore != null)
-				dataStore.dispose();
-			IOUtils.closeQuietly(sw);
+			WebServiceException wse = new WebServiceException(
+					e.getLocalizedMessage(), e);
+			throw wse;
 		}
-		return ""; // never here
-		// if (mode == ModeType.bounds) {
-		// } else if (mode == ModeType.features) {
-		//
-		// } else if (mode == ModeType.count) {
-		// return 1; //TODO
-		// }
-		//
-		// return layerName;// TODO
 	}
 
-	@RequestMapping(value = {"/data/{layername}/{fid}"}, method = RequestMethod.GET)
+	@RequestMapping(value = { "/data/{layername}/{fid}" }, method = RequestMethod.GET)
 	public @ResponseBody
 	Object getDataFid(
 			@PathVariable(value = "layername") String layerName,
@@ -350,23 +351,18 @@ public class SFSController {
 			@RequestParam(value = "queryable", required = false) String[] queryable,
 			@RequestParam(value = "mode", required = false, defaultValue = "features") ModeType mode,
 			@RequestParam(value = "hints", required = false) String hints,
-			HttpServletRequest request) {
-		return getData(layerName, fid, noGeom, attrs, limit, offset, orderBy, directions, lon, lat, tolerance, bbox, geometry, crs, queryable, mode, hints, request);
-	}
-	
-	/**
-	 * {field}_{query_op}={value}: specify a filter expression, field must be in
-	 * the list of fields specified by queryable, supported query_op's are: eq:
-	 * equal to ne: not equal to lt: lower than lte: lower than or equal to gt:
-	 * greater than gte: greater than or equal to like ilike
-	 */
-	private boolean checkQueryParams(HttpServletRequest request) {
-		Map<String, String> map = request.getParameterMap();// (HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
-		// TODO
+			HttpServletRequest request) throws WebServiceException {
+		try {
+			SFSParamsModel params = new SFSParamsModel(layerName, fid, noGeom,
+					attrs, limit, offset, orderBy, directions, lon, lat,
+					tolerance, bbox, geometry, crs, queryable, mode, hints,
+					request);
+			return featureFactory.getData(params);
 
-		// FAKE logic
-		if (map != null)
-			return true;
-		return false;
+		} catch (Exception e) {
+			WebServiceException wse = new WebServiceException(
+					e.getLocalizedMessage(), e);
+			throw wse;
+		}
 	}
 }
