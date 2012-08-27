@@ -1,3 +1,23 @@
+/*
+ *  SFS - Open Source Simple Feature Service implementation
+ *  Copyright (C) 2007-2012 GeoSolutions S.A.S.
+ *  http://www.geo-solutions.it
+ *
+ *  GPLv3 + Classpath exception
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package it.geosolutions.sfs.data.dw;
 
 import it.geosolutions.sfs.utils.GeoJSONBuilder;
@@ -23,8 +43,9 @@ import net.sf.json.JSONObject;
 import net.sf.json.JSONSerializer;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.ArrayUtils;
 import org.geotools.data.simple.SimpleFeatureCollection;
-import org.geotools.feature.FeatureIterator;
+import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.geojson.feature.FeatureJSON;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.NamedIdentifier;
@@ -40,7 +61,11 @@ import org.springframework.web.client.RestTemplate;
 
 import com.sun.org.apache.xerces.internal.util.URI.MalformedURIException;
 import com.vividsolutions.jts.geom.Geometry;
-
+/**
+ * 
+ * @author Carlo Cancellieri - ccancellieri@hotmail.com
+ *
+ */
 public class DWJSONUtils {
 
 	public static JSONObject getDWJSON(final File sourceFile)
@@ -168,7 +193,7 @@ public class DWJSONUtils {
 	 */
 	public static void writeDWFeatureCollection(
 			SimpleFeatureCollection featureCollection,
-			Map<String, Map<String, String>> values, String pg_pk,
+			Map<String, Map<String, String>> values, String valueAttrName, String pg_pk,
 			boolean featureBounding, Writer outWriter) throws Exception {
 		final FeatureJSON json = new FeatureJSON();
 		boolean geometryless = featureCollection.getSchema()
@@ -191,7 +216,7 @@ public class DWJSONUtils {
 			try {
 				SimpleFeatureType fType;
 				List<AttributeDescriptor> types;
-				FeatureIterator iterator = featureCollection.features();
+				SimpleFeatureIterator iterator = featureCollection.features();
 				int pkPos = -1;
 				Collection<String> attr = null;
 				while (iterator.hasNext()) {
@@ -235,19 +260,24 @@ public class DWJSONUtils {
 								defaultGeomType.getLocalName());
 
 					if (first) {
-						// store the key position
+						// store the pg_key position
 						attr = values.get(MEDATADA_KEY).keySet();
 						for (int j = 0; j < types.size(); j++) {
 							Object value = feature.getAttribute(j);
 							AttributeDescriptor ad = types.get(j);
 							if (ad.getLocalName().equalsIgnoreCase(pg_pk)) {
 								pkPos = j;
+								break;
 							}
 						}
 						if (pkPos == -1)
 							throw new IllegalArgumentException(
 									"Unable to locate the pk:" + pg_pk);
 
+						if (!attr.contains(valueAttrName))
+							throw new IllegalArgumentException(
+									"Unable to locate the an attribute called:" + valueAttrName + ".\nUse one of the following: "+ArrayUtils.toString(attr));
+						
 						first = false;
 					}
 
@@ -290,17 +320,22 @@ public class DWJSONUtils {
 					// append other attributes (JOIN)
 					Map<String, String> item = values.get(pkValue);
 					if (item != null) {
-						for (String key : attr) {
-							jsonWriter.key(key);
-							jsonWriter.value(item.get(key));
-						}
+						jsonWriter.key(DWFeatureFactory.VALUE);
+						jsonWriter.value(item.get(valueAttrName));
+//						for (String key : attr) {
+//							jsonWriter.key(key);
+//							jsonWriter.value(item.get(key));
+//						}
+					} else {
+						jsonWriter.key(DWFeatureFactory.VALUE);
+						jsonWriter.value(null);
 					}
 
-					// Bounding box for feature in properties
-					ReferencedEnvelope refenv = new ReferencedEnvelope(
-							feature.getBounds());
-					if (featureBounding && !refenv.isEmpty())
-						jsonWriter.writeBoundingBox(refenv);
+//					// Bounding box for feature in properties
+//					ReferencedEnvelope refenv = new ReferencedEnvelope(
+//							feature.getBounds());
+//					if (featureBounding && !refenv.isEmpty())
+//						jsonWriter.writeBoundingBox(refenv);
 
 					jsonWriter.endObject(); // end the properties
 					jsonWriter.endObject(); // end the feature

@@ -18,45 +18,35 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package it.geosolutions.sfs.data;
+package it.geosolutions.sfs.utils;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * 
  * @author Carlo Cancellieri - ccancellieri@hotmail.com
- *
  */
-public abstract class FeatureFactorySPI {
-
-	private final int priority;
-	
-	/**
-	 * 
-	 * @param priority an integer representing the priority of this FeatureFactory
-	 * @throws Exception
-	 */
-	public FeatureFactorySPI(final int priority) throws Exception {
-		this.priority=priority;
-	}
-	
-	/**
-	 * Check if the FeatureFactory can be created by this SPI
-	 * @return true if success
-	 * @throws Exception
-	 */
-	public abstract boolean canCreate() throws Exception;
-	
-	/**
-	 * Actually instantiate the FeatureFactory
-	 * @return the newly created FeatureFactory
-	 * @throws Exception
-	 */
-	public abstract FeatureFactory getFeatureFactory() throws Exception;
+public abstract class ControllerUtils {
 
 	/**
-	 * @return an integer representing the priority of this FeatureFactory
+	 * @param hints String containing a map providing implementation specific hints. The expected format is 
+		key1:value1;key2:value2;...
+	 * @return the obtained map or null
 	 */
-	public int getPriority() {
-		return priority;
+	public static Map<String,String> parseHints(String hints){
+		if (hints==null)
+			return null;
+		
+		Map<String,String> _hints=new HashMap<String, String>();
+		
+		String[] entryes=hints.split(";");
+		for (String entry: entryes){
+			String[] keyVal=entry.split(":");
+			if (keyVal.length!=2)
+				continue;
+			_hints.put(keyVal[0], keyVal[1]);
+		}
+		return _hints;
 	}
 
 }

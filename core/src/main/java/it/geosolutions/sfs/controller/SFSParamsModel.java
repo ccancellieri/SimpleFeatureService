@@ -1,9 +1,36 @@
+/*
+ *  SFS - Open Source Simple Feature Service implementation
+ *  Copyright (C) 2007-2012 GeoSolutions S.A.S.
+ *  http://www.geo-solutions.it
+ *
+ *  GPLv3 + Classpath exception
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package it.geosolutions.sfs.controller;
+
+import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
 import org.opengis.filter.sort.SortOrder;
 
+/**
+ * 
+ * @author Carlo Cancellieri - ccancellieri@hotmail.com
+ *
+ */
 public class SFSParamsModel {
 	private String layerName;
 	private String fid;
@@ -21,7 +48,7 @@ public class SFSParamsModel {
 	private String crs;
 	private String[] queryable;
 	private ModeType mode;
-	private String hints;
+	private Map<String,String> hints;
 	private HttpServletRequest request;
 	
 	public enum ModeType {
@@ -118,7 +145,7 @@ public class SFSParamsModel {
 			String[] attrs, Integer limit, Integer offset, String[] orderBy,
 			SortOrder[] directions, String lon, String lat, Double tolerance,
 			String bbox, String geometry, String crs, String[] queryable,
-			ModeType mode, String hints, HttpServletRequest request) {
+			ModeType mode, Map<String,String> hints, HttpServletRequest request) {
 		super();
 		this.layerName = layerName;
 		this.fid = fid;
@@ -268,11 +295,11 @@ public class SFSParamsModel {
 		this.mode = mode;
 	}
 
-	public String getHints() {
+	public Map<String,String> getHints() {
 		return hints;
 	}
 
-	public void setHints(String hints) {
+	public void setHints(Map<String,String> hints) {
 		this.hints = hints;
 	}
 

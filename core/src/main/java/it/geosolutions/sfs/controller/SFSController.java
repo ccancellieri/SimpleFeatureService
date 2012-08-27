@@ -1,3 +1,23 @@
+/*
+ *  SFS - Open Source Simple Feature Service implementation
+ *  Copyright (C) 2007-2012 GeoSolutions S.A.S.
+ *  http://www.geo-solutions.it
+ *
+ *  GPLv3 + Classpath exception
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package it.geosolutions.sfs.controller;
 
 import java.util.Comparator;
@@ -8,6 +28,7 @@ import java.util.TreeSet;
 import it.geosolutions.sfs.controller.SFSParamsModel.ModeType;
 import it.geosolutions.sfs.data.FeatureFactory;
 import it.geosolutions.sfs.data.FeatureFactorySPI;
+import it.geosolutions.sfs.utils.ControllerUtils;
 import it.geosolutions.sfs.utils.JSONUtils;
 
 import javax.servlet.http.HttpServletRequest;
@@ -58,13 +79,11 @@ import org.springframework.web.context.WebApplicationContext;
  * Moreover, to display properly the point on the map, a parametric SLD must be
  * supplied as default style to the OpenDataStore layer
  * 
- * @author Carlo Cancellieri - carlo.cancellieri@geo-solutions.it
+ * @author Carlo Cancellieri - ccancellieri@hotmail.com
  * 
  * @TODO: versioning controller
  */
-
 @Controller
-// @RequestMapping("/")
 public class SFSController {
 
 	/**
@@ -73,7 +92,7 @@ public class SFSController {
 	private final static Logger LOGGER = LoggerFactory
 			.getLogger(SFSController.class);
 	
-	private FeatureFactory featureFactory;
+	private static FeatureFactory featureFactory;
 
 	public SFSController() throws Exception {
 		
@@ -146,7 +165,7 @@ public class SFSController {
 	 */
 	@RequestMapping(value = "/describe/{layername}", method = RequestMethod.GET)
 	public @ResponseBody
-	JSONArray getSchema(@PathVariable(value = "layername") String layerName)
+	JSONArray describeLayer(@PathVariable(value = "layername") String layerName)
 			throws WebServiceException {
 		try {
 			SimpleFeatureType schema = featureFactory
@@ -320,7 +339,7 @@ public class SFSController {
 		try {
 			SFSParamsModel params = new SFSParamsModel(layerName, fid, noGeom,
 					attrs, limit, offset, orderBy, directions, lon, lat,
-					tolerance, bbox, geometry, crs, queryable, mode, hints,
+					tolerance, bbox, geometry, crs, queryable, mode, ControllerUtils.parseHints(hints),
 					request);
 
 			return featureFactory.getData(params);
@@ -355,7 +374,7 @@ public class SFSController {
 		try {
 			SFSParamsModel params = new SFSParamsModel(layerName, fid, noGeom,
 					attrs, limit, offset, orderBy, directions, lon, lat,
-					tolerance, bbox, geometry, crs, queryable, mode, hints,
+					tolerance, bbox, geometry, crs, queryable, mode, ControllerUtils.parseHints(hints),
 					request);
 			return featureFactory.getData(params);
 

@@ -1,5 +1,26 @@
+/*
+ *  SFS - Open Source Simple Feature Service implementation
+ *  Copyright (C) 2007-2012 GeoSolutions S.A.S.
+ *  http://www.geo-solutions.it
+ *
+ *  GPLv3 + Classpath exception
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package it.geosolutions.sfs.data;
 
+import it.geosolutions.sfs.controller.SFSController;
 import it.geosolutions.sfs.controller.SFSParamsModel;
 
 import org.geotools.geometry.jts.ReferencedEnvelope;
@@ -7,7 +28,7 @@ import org.opengis.feature.simple.SimpleFeatureType;
 
 /**
  * 
- * @author carlo cancellieri
+ * @author Carlo Cancellieri - ccancellieri@hotmail.com
  *
  */
 public abstract class FeatureFactory {
@@ -76,11 +97,27 @@ public abstract class FeatureFactory {
 	 */
 	public abstract Object getData(SFSParamsModel params) throws Exception;
 
+	/**
+	 * @see {@link SFSController#describeLayer(String)}
+	 * @param layerName the layerName
+	 * @return A SimpleFeatureType containing the features schema
+	 * @throws Exception
+	 */
 	public abstract SimpleFeatureType getSimpleFeatureType(String layerName)
 			throws Exception;
 	
+	/**
+	 * @see {@link SFSController#getCapabilities(javax.servlet.http.HttpServletRequest)}
+	 * @return an array containing all the available schemas for this store (should have the same size of the one returned by the {@link FeatureFactory#getAllSchemas()}
+	 * @throws Exception
+	 */
 	public abstract ReferencedEnvelope[] getAllReferencedEnvelopes() throws Exception;
 	
+	/**
+	 * @see {@link SFSController#getCapabilities(javax.servlet.http.HttpServletRequest)}
+	 * @return an array containing all the available schemas for this store (should have the same size of the one returned by the {@link FeatureFactory#getAllReferencedEnvelopes()}
+	 * @throws Exception
+	 */
 	public abstract SimpleFeatureType[] getAllSchemas() throws Exception;
 
 }

@@ -7,7 +7,6 @@ package it.geosolutions.sfs.utils;
 
 import java.io.Writer;
 import java.util.Calendar;
-import java.util.logging.Logger;
 
 import net.sf.json.JSONException;
 import net.sf.json.util.JSONBuilder;
@@ -33,13 +32,13 @@ import com.vividsolutions.jts.geom.impl.CoordinateArraySequence;
  * against the draft 5 version of the spec on http://geojson.org
  *
  * @author Chris Holmes, The Open Planning Project
- * @author Carlo Cancellieri
+ * @author Carlo Cancellieri - ccancellieri@hotmail.com
  * @version $Id$
  *
  */
 public class GeoJSONBuilder extends JSONBuilder {
-    private final Logger LOGGER = org.geotools.util.logging.Logging
-    .getLogger(this.getClass().toString());
+//    private final Logger LOGGER = org.geotools.util.logging.Logging
+//    .getLogger(this.getClass().toString());
     
     public GeoJSONBuilder(Writer w) {
         super(w);

@@ -1,3 +1,23 @@
+/*
+ *  SFS - Open Source Simple Feature Service implementation
+ *  Copyright (C) 2007-2012 GeoSolutions S.A.S.
+ *  http://www.geo-solutions.it
+ *
+ *  GPLv3 + Classpath exception
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package it.geosolutions.sfs.utils;
 
 import java.io.IOException;
@@ -43,7 +63,7 @@ import com.vividsolutions.jts.geom.Point;
 
 /**
  * 
- * @author carlo cancellieri
+ * @author Carlo Cancellieri - ccancellieri@hotmail.com
  * 
  */
 public abstract class GTTools {
@@ -97,7 +117,6 @@ public abstract class GTTools {
 			SimpleFeatureType schema) {
 		Query query = new Query();
 		applyFilter(params, attrs, fid, queryable, crs, geometry, tolerance, bbox, lon, lat, schema, query);
-		
 		applyAttributeSelection(schema, attrs, noGeom, query);
 
 		// the following apply only in feature collection mode
@@ -202,7 +221,7 @@ public abstract class GTTools {
 
 
 	private static void applyAttributeSelection(SimpleFeatureType schema,
-			String[] attrs, boolean noGeom, Query query) {
+			String[] attrs, boolean noGeom, Query query) throws IllegalArgumentException {
 		Set<String> attributes = Collections.emptySet();
 		if (attrs != null) {
 			attributes = new HashSet<String>(Arrays.asList(attrs));
@@ -236,7 +255,7 @@ public abstract class GTTools {
 
 			// check if we have residual, unknown attributes
 			if (attributes.size() > 0) {
-				throw new WebServiceException(
+				throw new IllegalArgumentException(
 						"The following attributes are not known to this service: "
 								+ attributes);
 			}
