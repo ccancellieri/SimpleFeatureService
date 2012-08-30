@@ -15,8 +15,8 @@
     <bean id="sfs-placeholderConfig" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer" >
         <property name="locations">
             <list>
+            	<value>classpath:internal-sfs-datasource.properties</value>
                 <value>classpath:sfs-datasource.properties</value>
-                <value>classpath:internal-sfs-datasource.properties</value>
             </list>
         </property>
         
@@ -26,12 +26,12 @@
     
     
     <bean id="PGisFeatureFactory" class="it.geosolutions.sfs.data.postgis.PGisFeatureFactorySPI" >
-        <constructor-arg index="0" type="java.io.File" value="src/main/resources/datastore.properties" />
+        <constructor-arg index="0" type="java.io.File" value="${PGisFeatureFactory.datastore.properties}" />
         <constructor-arg index="1" value="1" />
     </bean>
     
     <bean id="DWFeatureFactory" class="it.geosolutions.sfs.data.dw.DWFeatureFactorySPI" >
-        <constructor-arg index="0" type="java.io.File" value="src/main/resources/datastore.properties" />
+        <constructor-arg index="0" type="java.io.File" value="${DWFeatureFactory.datastore.properties}" />
         <constructor-arg index="1" value="2" />
     </bean>
     

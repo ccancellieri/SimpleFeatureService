@@ -20,8 +20,7 @@
  */
 package it.geosolutions.sfs.utils;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.commons.collections.map.CaseInsensitiveMap;
 
 /**
  * @author Carlo Cancellieri - ccancellieri@hotmail.com
@@ -33,11 +32,11 @@ public abstract class ControllerUtils {
 		key1:value1;key2:value2;...
 	 * @return the obtained map or null
 	 */
-	public static Map<String,String> parseHints(String hints){
+	public static CaseInsensitiveMap parseHints(String hints){
 		if (hints==null)
 			return null;
 		
-		Map<String,String> _hints=new HashMap<String, String>();
+		CaseInsensitiveMap _hints=new CaseInsensitiveMap();
 		
 		String[] entryes=hints.split(";");
 		for (String entry: entryes){

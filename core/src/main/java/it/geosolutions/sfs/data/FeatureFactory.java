@@ -39,7 +39,7 @@ public abstract class FeatureFactory {
 	 * @param fid
 	 * @param noGeom
 	 *            no_geom=true: so that the returned feature has no geometry
-	 *            ("geometry": null)xm
+	 *            ("geometry": null)
 	 * @param attrs
 	 *            attrs={field1}[,{field2},...]: to restrict the list of
 	 *            properties returned in the feature

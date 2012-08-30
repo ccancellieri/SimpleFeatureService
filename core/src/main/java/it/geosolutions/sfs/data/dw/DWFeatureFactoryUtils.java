@@ -1,11 +1,11 @@
 package it.geosolutions.sfs.data.dw;
 
-import java.util.Map;
+import org.apache.commons.collections.map.CaseInsensitiveMap;
 
 public abstract class DWFeatureFactoryUtils {
 
 	
-	public static boolean checkHints(Map<String, String> hints){
+	public static boolean checkHints(CaseInsensitiveMap hints){
 		if (hints!=null){
 			if (hints.containsKey(DWFeatureFactory.VALUE)){
 				return true;

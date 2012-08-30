@@ -27,13 +27,20 @@ import it.geosolutions.sfs.utils.GTTools;
 import it.geosolutions.sfs.utils.JSONUtils;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
 
-import net.sf.json.JSONObject;
-
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.ListUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.geotools.data.DataStore;
@@ -42,6 +49,10 @@ import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.opengis.feature.simple.SimpleFeatureType;
+import org.opengis.feature.type.AttributeDescriptor;
+
+import com.sun.org.omg.CORBA.AttributeDescription;
+import com.thoughtworks.xstream.XStream;
 
 /**
  * 
@@ -73,83 +84,88 @@ public class DWFeatureFactory extends PGisFeatureFactory {
 			StringWriter sw = null;
 			DataStore dataStore = null;
 			try {
-				// do we need data from DataWarehouse?
-				boolean dwNeeded =  DWFeatureFactoryUtils.checkHints(params.getHints());
-				
+
 				// //////////////////////////
-				// GET Postgis DataStore
+				// GET DataStore
 				dataStore = DataStoreUtils.getDataStore(getProp());
 
-				SimpleFeatureType schema = dataStore.getSchema(params.getLayerName());
-
+				// //////////////////////////
+				// String writer for result
+				sw = new StringWriter();
+				
 				// //////////////////////////////////
 				// prepare query to PostGis DataStore
-				
-				if (ArrayUtils.contains(params.getAttrs(), VALUE)) {
+				if (ArrayUtils.contains(params.getAttrs(), VALUE) && DWFeatureFactoryUtils.checkHints(params.getHints())) {
 					params.setAttrs((String[])ArrayUtils.removeElement(params.getAttrs(), VALUE));
-				} else {
-					// query does not require DataWarehouse since no value attribute is specified
-					dwNeeded=false;
-				}
-				
-				final Query query = GTTools.buildQuery(params.getRequest()
-						.getParameterMap(), params.getAttrs(), params.getFid(),
-						params.getQueryable(), params.getCrs(), params
-								.getOrderBy(), params.getDirections(), params
-								.isNoGeom(), params.getGeometry(), params
-								.getTolerance(), params.getBbox(), params
-								.getLon(), params.getLat(), params.getOffset(),
-						params.getLimit(), schema);
 
-				// //////////////////////////
-				// GET DATA FROM POSTGIS
-				final SimpleFeatureSource featureSource = dataStore
-						.getFeatureSource(params.getLayerName());
-				SimpleFeatureCollection collection = featureSource
-						.getFeatures(query);
-
-				sw = new StringWriter();
-
-				if (dwNeeded) {
+					// DataStore primary key
+					final String dsPk=getProp().getProperty("pg_pk");
+					
+					// check if DataStore primary key is included into the request
+					boolean includePK = ArrayUtils.contains(params.getAttrs(), dsPk);
+					// we have to force including the attribute used to merge data with DW
+					if (!includePK){
+						params.setAttrs((String[])ArrayUtils.add(params.getAttrs(), dsPk));
+					}
+					
+					SimpleFeatureCollection collection = getFilteredFeatureCollection(params, dataStore);
+					
 					// ////////////////////////////////////////
 					// GET DATA FROM DataWarehouse
+					
+					// TODO removeme This is only for testing purpose
 //					JSONObject json = DWJSONUtils.getDWJSON(new File(
-//							"src/main/resources/mdx_results.json")); 
+//							"src/main/resources/mdx_results.json"));
 					// JSONObject
 					// TODO: probably use param.getHints() to build the query...
-					String mdxQuery="http://hqlqatcdras1.hq.un.fao.org:8080/techcdr-mdx/MdxQueryServlet" +
-							"?workspace=Faostat&catalog=sdw_faostat_q&schema=Faostat+Production&language=en" +
-							"&attributes=area,year,area_harvested_wheat,area_harvested_rice,area_harvested_maize,area_harvested_flag_wheat,area_harvested_flag_rice,area_harvested_flag_maize,yield_wheat,yield_rice,yield_maize,yield_flag_wheat,yield_flag_rice,yield_flag_maize,production_quantity_wheat,production_quantity_rice,production_quantity_maize,production_quantity_flag_wheat,production_quantity_flag_rice,production_quantity_flag_maize&mdx=select+NON+EMPTY+Hierarchize%28Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bm5510%5D%7D%2C+%7B%5BItem%5D.%5BWheat%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bm5510%5D%7D%2C+%7B%5BItem%5D.%5BMaize%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bm5510%5D%7D%2C+%7B%5BItem%5D.%5BRice%2C+paddy%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bf5510%5D%7D%2C+%7B%5BItem%5D.%5BWheat%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bf5510%5D%7D%2C+%7B%5BItem%5D.%5BMaize%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bf5510%5D%7D%2C+%7B%5BItem%5D.%5BRice%2C+paddy%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bm5312%5D%7D%2C+%7B%5BItem%5D.%5BWheat%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bm5312%5D%7D%2C+%7B%5BItem%5D.%5BMaize%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bm5312%5D%7D%2C+%7B%5BItem%5D.%5BRice%2C+paddy%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bf5312%5D%7D%2C+%7B%5BItem%5D.%5BWheat%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bf5312%5D%7D%2C+%7B%5BItem%5D.%5BMaize%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bf5312%5D%7D%2C+%7B%5BItem%5D.%5BRice%2C+paddy%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bm5419%5D%7D%2C+%7B%5BItem%5D.%5BWheat%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bm5419%5D%7D%2C+%7B%5BItem%5D.%5BMaize%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bm5419%5D%7D%2C+%7B%5BItem%5D.%5BRice%2C+paddy%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bf5419%5D%7D%2C+%7B%5BItem%5D.%5BWheat%5D%7D%29%2C+Union%28Crossjoin%28%7B%5BMeasures%5D.%5Bf5419%5D%7D%2C+%7B%5BItem%5D.%5BMaize%5D%7D%29%2C+Crossjoin%28%7B%5BMeasures%5D.%5Bf5419%5D%7D%2C+%7B%5BItem%5D.%5BRice%2C+paddy%5D%7D%29%29%29%29%29%29%29%29%29%29%29%29%29%29%29%29%29%29%29+ON+COLUMNS%2C%0D%0A%0D%0A++NON+EMPTY+Hierarchize%28Union%28Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2001%5D%7D%29%2C+Union%28Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2002%5D%7D%29%2C+Union%28Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2003%5D%7D%29%2C+Union%28Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2004%5D%7D%29%2C+Union%28Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2005%5D%7D%29%2C+Union%28Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2006%5D%7D%29%2C+Union%28Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2007%5D%7D%29%2C+Union%28Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2008%5D%7D%29%2C+Union%28Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2009%5D%7D%29%2C+Union%28Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2010%5D%7D%29%2C+Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2011%5D%7D%29%29%29%29%29%29%29%29%29%29%29%29+ON+ROWS%0D%0A%0D%0Afrom+%5BCROPS%5D" +
-							"&arguments=&callback=%2C+Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2011%5D%7D%29%29%29%29%29%29%29%29%29%29%29%29+ON+ROWS%0D%0A%0D%0Afrom+%5BCROPS%5D" +
-							"&mime=application%2Fjson&arguments=&callback=";
-					JSONObject json = DWJSONUtils.fetchRESTObject(mdxQuery);
+//					String mdxQuery="http://hqlqatcdras1.hq.un.fao.org:8080/techcdr-mdx/MdxQueryServlet?workspace=Faostat" +
+//							"&catalog=sdw_faostat_q" +
+//							"&schema=Faostat+Production" +
+//							"&language=en" +
+//							"&attributes=area%2Cyear%2Cuuid%2C%2C%2Carea_harvested_wheat%2Carea_harvested_rice%2Carea_harvested_maize%2Carea_harvested_flag_wheat%2Carea_harvested_flag_rice%2Carea_harvested_flag_maize%2Cyield_wheat%2Cyield_rice%2Cyield_maize%2Cyield_flag_wheat%2Cyield_flag_rice%2Cyield_flag_maize%2Cproduction_quantity_wheat%2Cproduction_quantity_rice%2Cproduction_quantity_maize%2Cproduction_quantity_flag_wheat%2Cproduction_quantity_flag_rice%2Cproduction_quantity_flag_maize" +
+//							"&mdx=with+member+%5BMeasures%5D.%5Buuid%5D+as+%5BArea%5D.%5BArea%5D.CurrentMember.Properties%28%22uuid_area%22%29%0D%0A%0D%0Aselect+%0D%0A%0D%0A++NON+EMPTY+%0D%0A++++++Crossjoin%28%7B%0D%0A++++++++++%5BMeasures%5D.%5Buuid%5D%2C+%0D%0A++++++++++%5BMeasures%5D.%5Bm5510%5D%2C+%0D%0A++++++++++%5BMeasures%5D.%5Bf5510%5D%2C+%0D%0A++++++++++%5BMeasures%5D.%5Bm5312%5D%2C+%0D%0A++++++++++%5BMeasures%5D.%5Bf5312%5D%2C+%0D%0A++++++++++%5BMeasures%5D.%5Bm5419%5D%2C+%0D%0A++++++++++%5BMeasures%5D.%5Bf5419%5D%0D%0A++++++++++%7D%2C%0D%0A++++++++++%7B%0D%0A++++++++++%5BItem%5D.%5BWheat%5D%2C+%0D%0A++++++++++%5BItem%5D.%5BMaize%5D%2C+%0D%0A++++++++++%5BItem%5D.%5BRice%2C+paddy%5D%7D%29+ON+COLUMNS%2C%0D%0A%0D%0A++NON+EMPTY+%0D%0A++++++Crossjoin%28%5BArea%5D.%5BArea%5D.Members%2C+%7B%5BYear%5D.%5B2001%5D+%3A+%5BYear%5D.%5B2011%5D%7D%29+ON+ROWS%0D%0A%0D%0Afrom+%5BCROPS%5D"+
+//							"&mime=application%2Fjson" +
+//							"&arguments=" +
+//							"&callback=";
+//					JSONObject json = DWJSONUtils.fetchRESTObject(mdxQuery);
 
 					// ////////////////////////////
 					// load data into the map
-					Map<String, Map<String, String>> dwSource = DWJSONUtils
-							.loadSource(json, getProp().getProperty("dw_pk"));
-
+//					Map<String, Map<String, String>> dwSource = DWJSONUtils
+//							.loadSource(json, getProp().getProperty("dw_pk"));
+//					dwSource = updateDWSource(dwSource);
+					// TODO removeme This is only for testing purpose
+					XStream xstream=new XStream();
+					Map<String, Map<String, String>> dwSource=(Map<String, Map<String, String>>) xstream.fromXML(new File("dwSource.xml"));
+					
+					
 					// /////////////////////////////////////
 					// actually merge data producing output
-					DWJSONUtils.writeDWFeatureCollection(collection, dwSource, params.getHints().get(VALUE),//"yield_wheat"
-							getProp().getProperty("pg_pk"), true, sw);
+					DWJSONUtils.writeDWFeatureCollection(collection, dwSource, params.getHintsValueAsString(VALUE),//"yield_wheat"
+							includePK, dsPk, true, sw);
+
 				} else {
+					// query does not require DataWarehouse since no value attribute is specified
+					
+					// //////////////////////////
+					// GET DataStore
+					dataStore = DataStoreUtils.getDataStore(getProp());
+
+					SimpleFeatureCollection collection = getFilteredFeatureCollection(params, dataStore);
 					// /////////////////////////////////////
 					// actually merge data producing output
 					JSONUtils.writeFeatureCollection(collection, true, sw);
 				}
-
 			} finally {
 				if (dataStore != null)
 					dataStore.dispose();
 				IOUtils.closeQuietly(sw);
 			}
-			
-			String out=sw.toString();
-			FileWriter fw =new FileWriter(new File("src/main/resources/tmp.log"));
-			fw.write(out);
-			fw.close();
-			return out;
+//			FileWriter fw=new FileWriter(new File("src/main/resources/features.log"));
+//			fw.write(sw.toString());
+//			fw.flush();
+//			fw.close();
+			return sw.toString();
 
 
 		case count:
@@ -159,6 +175,25 @@ public class DWFeatureFactory extends PGisFeatureFactory {
 
 		}
 
+	}
+	
+	private static SimpleFeatureCollection getFilteredFeatureCollection(SFSParamsModel params, DataStore dataStore) throws IOException{
+		SimpleFeatureType schema = dataStore.getSchema(params.getLayerName());
+		
+		final Query query = GTTools.buildQuery(params.getRequest()
+				.getParameterMap(), params.getAttrs(), params.getFid(),
+				params.getQueryable(), params.getCrs(), params
+						.getOrderBy(), params.getDirections(), params
+						.isNoGeom(), params.getGeometry(), params
+						.getTolerance(), params.getBbox(), params
+						.getLon(), params.getLat(), params.getOffset(),
+				params.getLimit(), schema);
+
+		// //////////////////////////
+		// GET DATA FROM POSTGIS
+		final SimpleFeatureSource featureSource = dataStore.getFeatureSource(params.getLayerName());
+		
+		return featureSource.getFeatures(query);
 	}
 
 	private static SimpleFeatureType mergeSchema(SimpleFeatureType schema) {
@@ -173,7 +208,9 @@ public class DWFeatureFactory extends PGisFeatureFactory {
 	protected SimpleFeatureType getSimpleFeatureType(final String typeName,
 			DataStore dataStore) throws Exception {
 		try {
+			
 			return mergeSchema(super.getSimpleFeatureType(typeName, dataStore));
+			
 		} catch (Exception ioe) {
 			if (!IGNORE_NON_FATAL_ERRORS)
 				throw ioe;
@@ -181,6 +218,65 @@ public class DWFeatureFactory extends PGisFeatureFactory {
 		}
 	}
 
+	/**
+	 * TODO this is only for testing purpose.
+	 * remember to set 'dw_pk=area' into datastore.properties
+	 * @param dwSource
+	 * @return
+	 * @throws FileNotFoundException
+	 * @throws IOException
+	 */
+	private static Map<String, Map<String, String>> updateDWSource(Map<String, Map<String, String>> dwSource) throws FileNotFoundException, IOException{
+		Map<String, Map<String, String>> ret=new HashMap<String, Map<String, String>>(); 
+		Properties p=new Properties();
+		p.load(new FileReader("src/main/resources/gaul_2008_uuid_names.csv"));
+		ret.put(DWJSONUtils.MEDATADA_KEY, dwSource.get(DWJSONUtils.MEDATADA_KEY));
+		for (Object o:p.keySet()){
+			String s=(String)o;
+//		for (String s:dwSource.keySet()){
+//			dwSource.put((String)s, p.getProperty((String)s));
+			Map<String, String> entry=dwSource.get(s);
+			if (entry==null){
+				System.out.println("UNABLE TO LOCATE: "+s+" Into mdx query");
+				continue;
+			} else if (s.equalsIgnoreCase("Mexico")){
+				System.out.println("MEXICO: "+s);
+				
+			}
+//			if (s.equalsIgnoreCase(DWJSONUtils.MEDATADA_KEY)){
+//				
+//				continue;
+//			} else if (s.equalsIgnoreCase("Antarctica")){
+//				//update uuid
+//				String uuid=p.getProperty((String)s);
+//				if (uuid!=null){
+//					entry.put("uuid", uuid);
+//					ret.put(uuid, entry);
+//				}
+//			}
+			//update uuid
+			String uuid=p.getProperty(s);
+			if (uuid!=null){
+				if (!ret.containsKey(uuid)){
+					System.out.println("Adding: "+s+" with UUID:"+uuid);
+					entry.put("uuid", uuid);
+					ret.put(uuid, entry);
+				} else {
+					System.out.println("uuid already present for key: "+s);
+					entry.put("uuid", uuid);
+					ret.put(uuid+"__"+UUID.randomUUID(), entry);
+				}
+			} else {
+				System.out.println("uuid NULL for: "+s);
+			}
+		}
+		FileWriter fw =new FileWriter(new File("src/main/resources/tmp.log"));
+		XStream xstream=new XStream();
+		xstream.toXML(ret, fw);					
+		fw.close();
+
+		return ret;
+	}
 
 	//
 	// @Override

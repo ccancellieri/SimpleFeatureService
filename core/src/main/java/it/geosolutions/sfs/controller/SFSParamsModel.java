@@ -24,6 +24,7 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.opengis.filter.sort.SortOrder;
 
 /**
@@ -48,7 +49,7 @@ public class SFSParamsModel {
 	private String crs;
 	private String[] queryable;
 	private ModeType mode;
-	private Map<String,String> hints;
+	private CaseInsensitiveMap hints;
 	private HttpServletRequest request;
 	
 	public enum ModeType {
@@ -145,7 +146,7 @@ public class SFSParamsModel {
 			String[] attrs, Integer limit, Integer offset, String[] orderBy,
 			SortOrder[] directions, String lon, String lat, Double tolerance,
 			String bbox, String geometry, String crs, String[] queryable,
-			ModeType mode, Map<String,String> hints, HttpServletRequest request) {
+			ModeType mode, CaseInsensitiveMap hints, HttpServletRequest request) {
 		super();
 		this.layerName = layerName;
 		this.fid = fid;
@@ -295,11 +296,18 @@ public class SFSParamsModel {
 		this.mode = mode;
 	}
 
-	public Map<String,String> getHints() {
+	public CaseInsensitiveMap getHints() {
 		return hints;
 	}
+	
+	public String getHintsValueAsString(String key) {
+		if (key==null)
+			return null;
+		Object o=hints.get(key);
+		return (o==null)?"":(String) o;
+	}
 
-	public void setHints(Map<String,String> hints) {
+	public void setHints(CaseInsensitiveMap hints) {
 		this.hints = hints;
 	}
 

@@ -38,7 +38,6 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import net.sf.json.JSONArray;
-import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import net.sf.json.JSONSerializer;
 
@@ -193,7 +192,7 @@ public class DWJSONUtils {
 	 */
 	public static void writeDWFeatureCollection(
 			SimpleFeatureCollection featureCollection,
-			Map<String, Map<String, String>> values, String valueAttrName, String pg_pk,
+			Map<String, Map<String, String>> values, String valueAttrName, boolean includePK, String dsPK,
 			boolean featureBounding, Writer outWriter) throws Exception {
 		final FeatureJSON json = new FeatureJSON();
 		boolean geometryless = featureCollection.getSchema()
@@ -213,10 +212,11 @@ public class DWJSONUtils {
 			jsonWriter.array();
 
 			CoordinateReferenceSystem crs = null;
+			SimpleFeatureIterator iterator = null;
 			try {
 				SimpleFeatureType fType;
 				List<AttributeDescriptor> types;
-				SimpleFeatureIterator iterator = featureCollection.features();
+				iterator = featureCollection.features();
 				int pkPos = -1;
 				Collection<String> attr = null;
 				while (iterator.hasNext()) {
@@ -261,18 +261,18 @@ public class DWJSONUtils {
 
 					if (first) {
 						// store the pg_key position
-						attr = values.get(MEDATADA_KEY).keySet();
+						attr = values.remove(MEDATADA_KEY).keySet();
 						for (int j = 0; j < types.size(); j++) {
 							Object value = feature.getAttribute(j);
 							AttributeDescriptor ad = types.get(j);
-							if (ad.getLocalName().equalsIgnoreCase(pg_pk)) {
+							if (ad.getLocalName().equalsIgnoreCase(dsPK)) {
 								pkPos = j;
 								break;
 							}
 						}
 						if (pkPos == -1)
 							throw new IllegalArgumentException(
-									"Unable to locate the pk:" + pg_pk);
+									"Unable to locate the pk:" + dsPK);
 
 						if (!attr.contains(valueAttrName))
 							throw new IllegalArgumentException(
@@ -290,6 +290,9 @@ public class DWJSONUtils {
 						AttributeDescriptor ad = types.get(j);
 						if (j == pkPos) {
 							pkValue = (String) value;
+							if (!includePK){
+								continue;
+							}
 						}
 						if (value != null) {
 							if (value instanceof Geometry) {
@@ -342,6 +345,9 @@ public class DWJSONUtils {
 				}
 			} // catch an exception here?
 			finally {
+				if (iterator!=null)
+					iterator.close();
+				
 				// featureCollection.close(iterator);
 			}
 
@@ -390,10 +396,10 @@ public class DWJSONUtils {
 
 			jsonWriter.endObject(); // end featurecollection
 
-		} catch (JSONException jsonException) {
-			throw jsonException;
 		} finally {
-			outWriter.flush();
+			
+			if (outWriter!=null)
+				outWriter.flush();
 		}
 
 	}
