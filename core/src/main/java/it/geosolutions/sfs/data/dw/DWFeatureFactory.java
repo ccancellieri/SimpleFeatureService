@@ -26,12 +26,15 @@ import it.geosolutions.sfs.data.postgis.PGisFeatureFactory;
 import it.geosolutions.sfs.utils.GTTools;
 import it.geosolutions.sfs.utils.JSONUtils;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.StringWriter;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,8 +42,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.ListUtils;
+import javax.servlet.http.HttpServletResponse;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.geotools.data.DataStore;
@@ -49,9 +52,8 @@ import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.opengis.feature.simple.SimpleFeatureType;
-import org.opengis.feature.type.AttributeDescriptor;
+import org.opengis.feature.type.GeometryDescriptor;
 
-import com.sun.org.omg.CORBA.AttributeDescription;
 import com.thoughtworks.xstream.XStream;
 
 /**
@@ -61,17 +63,64 @@ import com.thoughtworks.xstream.XStream;
  */
 public class DWFeatureFactory extends PGisFeatureFactory {
 
+	private String[] attrs=null;
+	private String[] attrsAppend=null;
+	private Class[] classesAppend=null;
+	private String sourceName=null;
+	private String geometryName=null;
+
+	// DataStore primary key
+	private final String dsPk;
+	
 	public DWFeatureFactory(final Properties prop) throws Exception {
 		super(prop);
+		sourceName=getProp().getProperty(this.getClass().getSimpleName()+".source.name");
+		if (sourceName==null || sourceName.isEmpty())
+			throw new IllegalArgumentException("The source name is null or empty");
+		
+		Object attrsObj=getProp().get(this.getClass().getSimpleName()+"."+sourceName+".attrs");
+		Object attrsAppendObj=getProp().get(this.getClass().getSimpleName()+"."+sourceName+".append.attrs");
+		Object classesAppendObj=getProp().get(this.getClass().getSimpleName()+"."+sourceName+".append.classes");
+		geometryName=getProp().getProperty(this.getClass().getSimpleName()+"."+sourceName+".geometry");
+		
+		if (attrsObj!=null){
+			attrs=((String)attrsObj).split(",");
+			if (attrsAppendObj!=null && classesAppendObj!=null){
+				attrsAppend=((String)attrsAppendObj).split(",");
+				String[] classesStrAppend=((String)classesAppendObj).split(",");
+				classesAppend=new Class[classesStrAppend.length];
+				if (classesStrAppend.length==attrsAppend.length){
+					for (int i=0; i< classesStrAppend.length; i++){
+						Class c=Class.forName(classesStrAppend[i]);
+						classesAppend[i]=c;
+					}
+				} else
+					throw new IllegalArgumentException("Classes array and attr array are different in length. Classes:"+classesStrAppend.length+" attrsAppend:"+attrsAppend.length);
+			}
+		}
+		
+		dsPk=getProp().getProperty("ds_pk");
+		if (dsPk==null)
+			throw new IllegalArgumentException("The primary key cannot be null");
+		if (!ArrayUtils.contains(attrs,dsPk))
+			throw new IllegalArgumentException("The primary key should be present into the attribute list");
+		if (!ArrayUtils.contains(attrsAppend,getProp().getProperty("dw_pk")))
+			throw new IllegalArgumentException("The primary key should be present into the append attribute list");
 	}
 	
-	public final static String VALUE="value"; 
+//	public final static String VALUE="value"; 
 
 	/**
 	 * 
 	 */
 	@Override
-	public Object getData(SFSParamsModel params) throws Exception {
+	public void writeData(SFSParamsModel params,HttpServletResponse response) throws Exception {
+		String[] reqAttrs=params.getAttrs();
+		List<String> purgedReqAttrs=purgeAttrs(params.getAttrs(), this.attrs);
+		params.setAttrs(purgedReqAttrs.toArray(new String[]{}));
+		
+		params.setLayerName(sourceName);
+		
 		switch (params.getMode()) {
 		// FeatureSource.getFeatures(Query/Filter)
 		// /data/layername?mode=features&...
@@ -81,34 +130,39 @@ public class DWFeatureFactory extends PGisFeatureFactory {
 		// down the view params contained in the
 		// Hints.VIRTUAL_TABLE_PARAMETERS hint.
 		case features:
-			StringWriter sw = null;
+			OutputStream os = null;
+			OutputStreamWriter osw=null;
+			Writer w=null;
 			DataStore dataStore = null;
 			try {
 
 				// //////////////////////////
+				// writer for result
+				os = response.getOutputStream();
+				osw=new OutputStreamWriter(os);
+				w=new BufferedWriter(osw);
+				
+				// //////////////////////////
 				// GET DataStore
 				dataStore = DataStoreUtils.getDataStore(getProp());
 
-				// //////////////////////////
-				// String writer for result
-				sw = new StringWriter();
 				
 				// //////////////////////////////////
 				// prepare query to PostGis DataStore
-				if (ArrayUtils.contains(params.getAttrs(), VALUE) && DWFeatureFactoryUtils.checkHints(params.getHints())) {
-					params.setAttrs((String[])ArrayUtils.removeElement(params.getAttrs(), VALUE));
-
-					// DataStore primary key
-					final String dsPk=getProp().getProperty("pg_pk");
-					
+//				List<String> reqHints=parseHintsParams(params, this.attrsAppend);
+				List<String> reqAttrsAppend=purgeAttrs(reqAttrs, this.attrsAppend);
+				if (!reqAttrsAppend.isEmpty()) {
 					// check if DataStore primary key is included into the request
-					boolean includePK = ArrayUtils.contains(params.getAttrs(), dsPk);
+					boolean includePK = purgedReqAttrs.contains(dsPk);
 					// we have to force including the attribute used to merge data with DW
 					if (!includePK){
-						params.setAttrs((String[])ArrayUtils.add(params.getAttrs(), dsPk));
+						purgedReqAttrs.add(dsPk);
+						params.setAttrs(purgedReqAttrs.toArray(new String[]{}));
+					} else {
+						params.setAttrs(purgedReqAttrs.toArray(new String[]{}));
 					}
 					
-					SimpleFeatureCollection collection = getFilteredFeatureCollection(params, dataStore);
+					SimpleFeatureCollection collection = getFilteredFeatureCollection(params, dataStore, geometryName);
 					
 					// ////////////////////////////////////////
 					// GET DATA FROM DataWarehouse
@@ -136,49 +190,81 @@ public class DWFeatureFactory extends PGisFeatureFactory {
 //					dwSource = updateDWSource(dwSource);
 					// TODO removeme This is only for testing purpose
 					XStream xstream=new XStream();
-					Map<String, Map<String, String>> dwSource=(Map<String, Map<String, String>>) xstream.fromXML(new File("dwSource.xml"));
+					Map<String, Map<String, String>> dwSource=(Map<String, Map<String, String>>) xstream.fromXML(new File(getProp().getProperty("dwSource")));
 					
 					
 					// /////////////////////////////////////
 					// actually merge data producing output
-					DWJSONUtils.writeDWFeatureCollection(collection, dwSource, params.getHintsValueAsString(VALUE),//"yield_wheat"
-							includePK, dsPk, true, sw);
+					DWJSONUtils.writeDWFeatureCollection(collection, purgedReqAttrs, dwSource, reqAttrsAppend,//"yield_wheat"
+							includePK, dsPk, true, w);
 
 				} else {
 					// query does not require DataWarehouse since no value attribute is specified
 					
-					// //////////////////////////
-					// GET DataStore
-					dataStore = DataStoreUtils.getDataStore(getProp());
-
-					SimpleFeatureCollection collection = getFilteredFeatureCollection(params, dataStore);
+					SimpleFeatureCollection collection = getFilteredFeatureCollection(params, dataStore, geometryName);
 					// /////////////////////////////////////
 					// actually merge data producing output
-					JSONUtils.writeFeatureCollection(collection, true, sw);
+			        JSONUtils.writeFeatureCollection(collection, true, w);
+			        
 				}
+				
+				w.flush();
 			} finally {
 				if (dataStore != null)
 					dataStore.dispose();
-				IOUtils.closeQuietly(sw);
+				IOUtils.closeQuietly(os);
+				IOUtils.closeQuietly(osw);
+				IOUtils.closeQuietly(w);
 			}
-//			FileWriter fw=new FileWriter(new File("src/main/resources/features.log"));
-//			fw.write(sw.toString());
-//			fw.flush();
-//			fw.close();
-			return sw.toString();
-
-
+			
+			break;
 		case count:
 		case bounds:
 		default:
-			return super.getData(params);
-
+			super.writeData(params,response);
+			break;
 		}
-
 	}
 	
-	private static SimpleFeatureCollection getFilteredFeatureCollection(SFSParamsModel params, DataStore dataStore) throws IOException{
+	private static List<String> purgeAttrs(String[] attrsList, String[] incomingAttrs){
+		List<String> ret=new ArrayList<String>();
+		if (incomingAttrs==null || incomingAttrs==null)
+			return ret;
+		for (String attrName:attrsList){
+			if (ArrayUtils.contains(incomingAttrs, attrName)){
+				ret.add(attrName);
+			}
+		}
+		return ret;
+	}
+	
+	private static List<String> parseHintsParams(SFSParamsModel params, String[] attrs){
+		List<String> ret=new ArrayList<String>();
+		if (params.getHints()==null || attrs==null)
+			return ret;
+		for (String attrName:attrs){
+			String paramName=params.getHintsValueAsString(attrName);
+			if (paramName!=null){
+				ret.add(paramName);
+			}
+		}
+		return ret;
+	}
+	
+	
+	private static SimpleFeatureCollection getFilteredFeatureCollection(SFSParamsModel params, DataStore dataStore, String geometryName) throws IOException{
 		SimpleFeatureType schema = dataStore.getSchema(params.getLayerName());
+		GeometryDescriptor geomDesc=null;
+		if (geometryName==null)
+			geomDesc=schema.getGeometryDescriptor();
+		else
+			geomDesc=GTTools.getGeometryDescriptor(schema, geometryName);
+		
+		final SimpleFeatureTypeBuilder b = new SimpleFeatureTypeBuilder();
+		b.init(schema);
+		b.setDefaultGeometry(geomDesc.getLocalName());
+		b.setName(schema.getName());
+		
 		
 		final Query query = GTTools.buildQuery(params.getRequest()
 				.getParameterMap(), params.getAttrs(), params.getFid(),
@@ -187,7 +273,7 @@ public class DWFeatureFactory extends PGisFeatureFactory {
 						.isNoGeom(), params.getGeometry(), params
 						.getTolerance(), params.getBbox(), params
 						.getLon(), params.getLat(), params.getOffset(),
-				params.getLimit(), schema);
+				params.getLimit(), b.buildFeatureType());
 
 		// //////////////////////////
 		// GET DATA FROM POSTGIS
@@ -196,20 +282,33 @@ public class DWFeatureFactory extends PGisFeatureFactory {
 		return featureSource.getFeatures(query);
 	}
 
-	private static SimpleFeatureType mergeSchema(SimpleFeatureType schema) {
+	private static SimpleFeatureType mergeSchema(SimpleFeatureType schema, String typeName, String[] attrs, String[] appendAttrs, Class<?>[] appendClass) {
+		
 		final SimpleFeatureTypeBuilder b = new SimpleFeatureTypeBuilder();
 		b.init(schema);
-		b.setName(schema.getName());
-		b.add(VALUE, String.class);
+//		for (AttributeDescriptor ad:schema.getAttributeDescriptors()){
+//			String name=ad.getLocalName();
+//			if (ArrayUtils.contains(attrs,name)){
+//				b.add(ad);
+//			} // TODO else LOG
+//		}
+		if (appendClass.length==appendAttrs.length){
+			for (int i=0; i<appendAttrs.length; i++){
+				b.add(appendAttrs[i],appendClass[i]);
+			}
+		} // TODO else LOG
+//		b.setDefaultGeometry(geometryName);
+		b.setName(typeName);
+//		b.add(VALUE, String.class);
 		return b.buildFeatureType();
 	}
-
+	
 	@Override
-	protected SimpleFeatureType getSimpleFeatureType(final String typeName,
-			DataStore dataStore) throws Exception {
+	public SimpleFeatureType getSimpleFeatureType(final String typeName) throws Exception {
 		try {
 			
-			return mergeSchema(super.getSimpleFeatureType(typeName, dataStore));
+			
+			return mergeSchema(super.getSimpleFeatureType(typeName),sourceName, attrs, attrsAppend, classesAppend);
 			
 		} catch (Exception ioe) {
 			if (!IGNORE_NON_FATAL_ERRORS)
@@ -217,6 +316,7 @@ public class DWFeatureFactory extends PGisFeatureFactory {
 			return null;
 		}
 	}
+	
 
 	/**
 	 * TODO this is only for testing purpose.

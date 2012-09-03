@@ -191,8 +191,8 @@ public class DWJSONUtils {
 	 * @throws Exception
 	 */
 	public static void writeDWFeatureCollection(
-			SimpleFeatureCollection featureCollection,
-			Map<String, Map<String, String>> values, String valueAttrName, boolean includePK, String dsPK,
+			SimpleFeatureCollection featureCollection, List<String> attrName,
+			Map<String, Map<String, String>> values, List<String> appendAttrNames, boolean includePK, String dsPK,
 			boolean featureBounding, Writer outWriter) throws Exception {
 		final FeatureJSON json = new FeatureJSON();
 		boolean geometryless = featureCollection.getSchema()
@@ -274,27 +274,31 @@ public class DWJSONUtils {
 							throw new IllegalArgumentException(
 									"Unable to locate the pk:" + dsPK);
 
-						if (!attr.contains(valueAttrName))
+						if (!attr.containsAll(appendAttrNames))
 							throw new IllegalArgumentException(
-									"Unable to locate the an attribute called:" + valueAttrName + ".\nUse one of the following: "+ArrayUtils.toString(attr));
+									"Unable to locate the an attribute called:" + appendAttrNames + ".\nUse one of the following: "+ArrayUtils.toString(attr));
 						
 						first = false;
 					}
-
+					
 					jsonWriter.key("properties");
 					jsonWriter.object();
 
 					String pkValue = null;
-					for (int j = 0; j < types.size(); j++) {
-						Object value = feature.getAttribute(j);
+					for (int j = 0; j < attrName.size(); j++) {
 						AttributeDescriptor ad = types.get(j);
-						if (j == pkPos) {
-							pkValue = (String) value;
-							if (!includePK){
-								continue;
-							}
-						}
+//						if (!attr.contains(attrName.get(j)))
+//							continue;
+						Object value = feature.getAttribute(ad.getName());//attrName.get(j)
 						if (value != null) {
+							
+							if (j == pkPos) {
+								pkValue = (String) value;
+								if (!includePK){
+									continue;
+								}
+							}
+							
 							if (value instanceof Geometry) {
 								// This is an area of the spec where they
 								// decided to 'let convention evolve',
@@ -323,15 +327,15 @@ public class DWJSONUtils {
 					// append other attributes (JOIN)
 					Map<String, String> item = values.get(pkValue);
 					if (item != null) {
-						jsonWriter.key(DWFeatureFactory.VALUE);
-						jsonWriter.value(item.get(valueAttrName));
-//						for (String key : attr) {
-//							jsonWriter.key(key);
-//							jsonWriter.value(item.get(key));
-//						}
+						for (String value: appendAttrNames){
+							jsonWriter.key(value);
+							jsonWriter.value(item.get(value));	
+						}
 					} else {
-						jsonWriter.key(DWFeatureFactory.VALUE);
-						jsonWriter.value(null);
+						for (String value: appendAttrNames){
+							jsonWriter.key(value);
+							jsonWriter.value(null);	
+						}
 					}
 
 //					// Bounding box for feature in properties
@@ -397,7 +401,6 @@ public class DWJSONUtils {
 			jsonWriter.endObject(); // end featurecollection
 
 		} finally {
-			
 			if (outWriter!=null)
 				outWriter.flush();
 		}

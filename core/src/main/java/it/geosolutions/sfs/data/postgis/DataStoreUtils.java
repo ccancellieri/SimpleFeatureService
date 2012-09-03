@@ -93,7 +93,7 @@ public abstract class DataStoreUtils {
 	 * @throws NullPointerException
 	 * @throws CQLException
 	 */
-	protected static Filter getFilter(String attrName,
+	protected static Filter getInFilter(String attrName,
 			String... keys) throws IllegalArgumentException, CQLException {
 	
 		if (keys == null) {
@@ -134,6 +134,25 @@ public abstract class DataStoreUtils {
 		 * filter = ECQL.toFilter("length IN ( (1+2), 3-4, [5*6] )");
 		 */
 		return ECQL.toFilter(query.toString());
+	}
+	
+	/**
+	 * returns the geometry name if specified into the properties object in the following form:<br>
+	 * FEATUREFACTORY_NAME.RESOURCE_NAME.geometry=GEOMETRYNAME
+	 * @param c
+	 * @param prop
+	 * @param resourceName
+	 * @return
+	 */
+	public static String getGeometryForResource(Class<?> c, Properties prop, String resourceName){
+		return prop.getProperty(c.getSimpleName()+"."+resourceName+".geometry");
+	}
+	
+	public static String[] getAllResources(Class<?> c, Properties prop){
+		String allResources=prop.getProperty(c.getSimpleName()+".resources");
+		if (allResources==null)
+			throw new IllegalStateException("No configured resources were found");
+		return allResources.split(",");
 	}
 
 	/**

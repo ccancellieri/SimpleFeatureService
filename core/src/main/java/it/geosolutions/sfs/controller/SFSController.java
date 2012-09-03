@@ -20,6 +20,10 @@
  */
 package it.geosolutions.sfs.controller;
 
+import java.io.BufferedWriter;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Map;
@@ -32,8 +36,13 @@ import it.geosolutions.sfs.utils.ControllerUtils;
 import it.geosolutions.sfs.utils.JSONUtils;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.xml.ws.WebServiceException;
 
+import org.apache.commons.io.IOUtils;
+import org.geotools.data.DataStore;
+import org.geotools.geojson.GeoJSON;
+import org.geotools.geojson.geom.GeometryJSON;
 import org.json.simple.JSONArray;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.filter.sort.SortOrder;
@@ -123,6 +132,7 @@ public class SFSController {
 			while (((spi=spiOrderedMap.pollFirst())!=null)){
 				try{
 					featureFactory = spi.getFeatureFactory();
+					break;
 				} catch (Exception e){
 					LOGGER.error(e.getLocalizedMessage(),e);
 				}
@@ -141,12 +151,12 @@ public class SFSController {
 	 * @throws Exception
 	 */
 	@RequestMapping(value = "/capabilities", method = RequestMethod.GET)
-	public @ResponseBody
-	JSONArray getCapabilities(HttpServletRequest request)
+	public 
+	void getCapabilities(HttpServletRequest request, HttpServletResponse response)
 			throws WebServiceException {
 		try {
-			return JSONUtils.writeCapabilities(LOGGER,featureFactory.getAllSchemas(),
-					featureFactory.getAllReferencedEnvelopes());
+			featureFactory.writeCapabilities(request,response);
+			
 		} catch (Exception e) {
 			WebServiceException wse = new WebServiceException(
 					e.getLocalizedMessage(), e);
@@ -164,18 +174,32 @@ public class SFSController {
 	 * @throws Exception
 	 */
 	@RequestMapping(value = "/describe/{layername}", method = RequestMethod.GET)
-	public @ResponseBody
-	JSONArray describeLayer(@PathVariable(value = "layername") String layerName)
+	public
+	void describeLayer(@PathVariable(value = "layername") String layerName, HttpServletResponse response)
 			throws WebServiceException {
+		OutputStream os = null;
+		OutputStreamWriter osw=null;
+		Writer w=null;
+		DataStore dataStore = null;
 		try {
-			SimpleFeatureType schema = featureFactory
-					.getSimpleFeatureType(layerName);
+			os = response.getOutputStream();
+			osw=new OutputStreamWriter(os);
+			w=new BufferedWriter(osw);
 
-			return JSONUtils.getDescriptor(schema);
+			w.write(JSONUtils.getDescriptor(featureFactory.getSimpleFeatureType(layerName)).toJSONString());
+			
+			w.flush();
+			
 		} catch (Exception e) {
 			WebServiceException wse = new WebServiceException(
 					e.getLocalizedMessage(), e);
 			throw wse;
+		} finally {
+			if (dataStore != null)
+				dataStore.dispose();
+			IOUtils.closeQuietly(os);
+			IOUtils.closeQuietly(osw);
+			IOUtils.closeQuietly(w);
 		}
 
 	}
@@ -242,9 +266,9 @@ public class SFSController {
 	 *            gt: greater than gte: greater than or equal to like ilike
 	 * @throws Exception
 	 */
-	@RequestMapping(value = { "/data/{layername}" }, method = RequestMethod.GET)
+	@RequestMapping(value = { "/data/{layername}" }, method = {RequestMethod.GET, RequestMethod.POST}, produces="application/json")
 	public @ResponseBody
-	Object getData(
+	void getData(
 
 			@PathVariable(value = "layername") String layerName,
 			/**
@@ -335,14 +359,15 @@ public class SFSController {
 			 * @throws Exception
 			 */
 			@RequestParam(value = "hints", required = false) String hints,
-			HttpServletRequest request) throws WebServiceException {
+			HttpServletRequest request,
+			HttpServletResponse response) throws WebServiceException {
 		try {
 			SFSParamsModel params = new SFSParamsModel(layerName, fid, noGeom,
 					attrs, limit, offset, orderBy, directions, lon, lat,
 					tolerance, bbox, geometry, crs, queryable, mode, ControllerUtils.parseHints(hints),
 					request);
 
-			return featureFactory.getData(params);
+			featureFactory.writeData(params,response);
 		} catch (Exception e) {
 			WebServiceException wse = new WebServiceException(
 					e.getLocalizedMessage(), e);
@@ -350,9 +375,9 @@ public class SFSController {
 		}
 	}
 
-	@RequestMapping(value = { "/data/{layername}/{fid}" }, method = RequestMethod.GET)
+	@RequestMapping(value = { "/data/{layername}/{fid}" }, method = {RequestMethod.GET, RequestMethod.POST} , produces="application/json")
 	public @ResponseBody
-	Object getDataFid(
+	void getDataFid(
 			@PathVariable(value = "layername") String layerName,
 			@PathVariable(value = "fid") String fid,
 			@RequestParam(value = "no_geom", required = false, defaultValue = "false") boolean noGeom,
@@ -370,13 +395,14 @@ public class SFSController {
 			@RequestParam(value = "queryable", required = false) String[] queryable,
 			@RequestParam(value = "mode", required = false, defaultValue = "features") ModeType mode,
 			@RequestParam(value = "hints", required = false) String hints,
-			HttpServletRequest request) throws WebServiceException {
+			HttpServletRequest request,
+			HttpServletResponse response) throws WebServiceException {
 		try {
 			SFSParamsModel params = new SFSParamsModel(layerName, fid, noGeom,
 					attrs, limit, offset, orderBy, directions, lon, lat,
 					tolerance, bbox, geometry, crs, queryable, mode, ControllerUtils.parseHints(hints),
 					request);
-			return featureFactory.getData(params);
+			featureFactory.writeData(params,response);
 
 		} catch (Exception e) {
 			WebServiceException wse = new WebServiceException(

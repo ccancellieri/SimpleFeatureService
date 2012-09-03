@@ -20,6 +20,9 @@
  */
 package it.geosolutions.sfs.data;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import it.geosolutions.sfs.controller.SFSController;
 import it.geosolutions.sfs.controller.SFSParamsModel;
 
@@ -95,7 +98,7 @@ public abstract class FeatureFactory {
 	 *            gt: greater than gte: greater than or equal to like ilike
 	 * @throws Exception
 	 */
-	public abstract Object getData(SFSParamsModel params) throws Exception;
+	public abstract void writeData(SFSParamsModel params, HttpServletResponse response) throws Exception;
 
 	/**
 	 * @see {@link SFSController#describeLayer(String)}
@@ -107,17 +110,11 @@ public abstract class FeatureFactory {
 			throws Exception;
 	
 	/**
-	 * @see {@link SFSController#getCapabilities(javax.servlet.http.HttpServletRequest)}
-	 * @return an array containing all the available schemas for this store (should have the same size of the one returned by the {@link FeatureFactory#getAllSchemas()}
+	 * 
+	 * @param request
+	 * @param response
 	 * @throws Exception
 	 */
-	public abstract ReferencedEnvelope[] getAllReferencedEnvelopes() throws Exception;
-	
-	/**
-	 * @see {@link SFSController#getCapabilities(javax.servlet.http.HttpServletRequest)}
-	 * @return an array containing all the available schemas for this store (should have the same size of the one returned by the {@link FeatureFactory#getAllReferencedEnvelopes()}
-	 * @throws Exception
-	 */
-	public abstract SimpleFeatureType[] getAllSchemas() throws Exception;
+	public abstract void writeCapabilities(HttpServletRequest request, HttpServletResponse response) throws Exception;
 
 }

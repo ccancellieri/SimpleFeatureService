@@ -27,12 +27,12 @@
     
     <bean id="PGisFeatureFactory" class="it.geosolutions.sfs.data.postgis.PGisFeatureFactorySPI" >
         <constructor-arg index="0" type="java.io.File" value="${PGisFeatureFactory.datastore.properties}" />
-        <constructor-arg index="1" value="1" />
+        <constructor-arg index="1" value="${PGisFeatureFactory.priority}" />
     </bean>
     
     <bean id="DWFeatureFactory" class="it.geosolutions.sfs.data.dw.DWFeatureFactorySPI" >
         <constructor-arg index="0" type="java.io.File" value="${DWFeatureFactory.datastore.properties}" />
-        <constructor-arg index="1" value="2" />
+        <constructor-arg index="1" value="${DWFeatureFactory.priority}" />
     </bean>
     
     <!-- 

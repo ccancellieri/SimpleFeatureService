@@ -5,26 +5,21 @@
 	<!-- Commons -->
 	<display-name>SimpleFeatureService Web Application</display-name>
 
-	<servlet-mapping>
-        <servlet-name>sfs</servlet-name>
-        <url-pattern>/*</url-pattern>
-    </servlet-mapping>
-	
 	<!-- pick up all spring application contexts -->
 	<context-param>
 		<param-name>contextConfigLocation</param-name>
 		<param-value>classpath*:/applicationContext.xml classpath*:/applicationSecurityContext.xml</param-value>
 	</context-param>
 	<!-- SOAP -->
-	<servlet>
-		<servlet-name>sfs</servlet-name>
-		<servlet-class>org.springframework.ws.transport.http.MessageDispatcherServlet</servlet-class>
-		<init-param>
-			<param-name>transformWsdlLocations</param-name>
-			<param-value>true</param-value>
-		</init-param>
-		<load-on-startup>1</load-on-startup>
-	</servlet>
+<!-- 	<servlet> -->
+<!-- 		<servlet-name>sfs</servlet-name> -->
+<!-- 		<servlet-class>org.springframework.ws.transport.http.MessageDispatcherServlet</servlet-class> -->
+<!-- 		<init-param> -->
+<!-- 			<param-name>transformWsdlLocations</param-name> -->
+<!-- 			<param-value>true</param-value> -->
+<!-- 		</init-param> -->
+<!-- 		<load-on-startup>1</load-on-startup> -->
+<!-- 	</servlet> -->
 	
 	<!-- ReST -->
 	<servlet>
@@ -38,5 +33,11 @@
 			org.springframework.web.context.ContextLoaderListener
 		</listener-class>
 	</listener>
+	
+	<servlet-mapping>
+        <servlet-name>sfs</servlet-name>
+        <url-pattern>/*</url-pattern>
+    </servlet-mapping>
+	
 
 </web-app>

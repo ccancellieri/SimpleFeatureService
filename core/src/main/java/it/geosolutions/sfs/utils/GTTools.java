@@ -33,6 +33,7 @@ import javax.xml.ws.WebServiceException;
 
 import net.sf.json.JSONArray;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.geotools.data.Query;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureSource;
@@ -68,7 +69,7 @@ import com.vividsolutions.jts.geom.Point;
  */
 public abstract class GTTools {
 
-	public static int getCount(SimpleFeatureSource featureSource, Query query)
+	public static Integer getCount(SimpleFeatureSource featureSource, Query query)
 			throws IOException {
 		int count = featureSource.getCount(query);
 		if (count == -1) {
@@ -131,8 +132,7 @@ public abstract class GTTools {
 
 	
 	
-	private static void applyFilter(Map<String, String[]> form, String[] attrs, String fid, String[] queryable, String crs, String geometry, Double tolerance, String bbox, String lon, String lat,
-			SimpleFeatureType schema, Query query) {
+	private static void applyFilter(Map<String, String[]> form, String[] attrs, String fid, String[] queryable, String crs, String geometry, Double tolerance, String bbox, String lon, String lat, SimpleFeatureType schema, Query query) {
 		if (fid != null) {
 			final Id fidFilter = FF
 					.id(Collections.singleton(FF.featureId(fid)));
@@ -141,9 +141,9 @@ public abstract class GTTools {
 			List<Filter> filters = new ArrayList<Filter>();
 
 			// build the geometry filters
-			filters.add(buildGeometryFilter(schema, geometry, tolerance));
-			filters.add(buildBBoxFilter(schema, tolerance, bbox));
-			filters.add(buildXYToleranceFilter(schema, tolerance, lon, lat));
+			filters.add(buildGeometryFilter(schema.getGeometryDescriptor(), geometry, tolerance));
+			filters.add(buildBBoxFilter(schema, schema.getGeometryDescriptor(), tolerance, bbox));
+			filters.add(buildXYToleranceFilter(schema.getGeometryDescriptor(), tolerance, lon, lat));
 
 			// see if we have any non geometric one
 			if (queryable != null) {
@@ -330,7 +330,7 @@ public abstract class GTTools {
 //		}
 //	}
 
-	private static Filter buildXYToleranceFilter(SimpleFeatureType schema,
+	private static Filter buildXYToleranceFilter(GeometryDescriptor geom,
 			final Double tolerance, String x, String y) {
 		if (x == null && y == null) {
 			return Filter.INCLUDE;
@@ -344,14 +344,13 @@ public abstract class GTTools {
 
 		final Point centerPoint = new GeometryFactory()
 				.createPoint(new Coordinate(ordx, ordy));
-		return geometryFilter(schema, centerPoint, tolerance);
+		return geometryFilter(geom, centerPoint, tolerance);
 
 	}
 
-	private static Filter geometryFilter(SimpleFeatureType schema,
+	private static Filter geometryFilter(GeometryDescriptor geom,
 			Geometry geometry, Double tolerance) {
-		PropertyName defaultGeometry = FF.property(schema
-				.getGeometryDescriptor().getLocalName());
+		PropertyName defaultGeometry = FF.property(geom.getLocalName());
 		Literal center = FF.literal(geometry);
 		
 		if (tolerance==null || tolerance == 0) {
@@ -371,15 +370,14 @@ public abstract class GTTools {
 		}
 	}
 
-	private static Filter buildBBoxFilter(SimpleFeatureType schema,
+	private static Filter buildBBoxFilter(SimpleFeatureType schema, GeometryDescriptor geom,
 			final Double tolerance, String bbox) {
 		if (bbox == null) {
 			return Filter.INCLUDE;
 		} else {
 			try {
 				JSONArray ordinates = JSONArray.fromObject("[" + bbox + "]");
-				String defaultGeomName = schema.getGeometryDescriptor()
-						.getLocalName();
+				String defaultGeomName = geom.getLocalName();
 				double minx = ordinates.getDouble(0);
 				double miny = ordinates.getDouble(1);
 				double maxx = ordinates.getDouble(2);
@@ -398,20 +396,66 @@ public abstract class GTTools {
 		}
 	}
 
-	private static Filter buildGeometryFilter(SimpleFeatureType schema,
+	private static Filter buildGeometryFilter(GeometryDescriptor geom,
 			String geometry, final Double tolerance) {
 		if (geometry == null) {
 			return Filter.INCLUDE;
 		} else {
 			try {
-				Geometry geom = new GeometryJSON().read(geometry);
-				return geometryFilter(schema, geom, tolerance);
+				Geometry geomToFilter = new GeometryJSON().read(geometry);
+				return geometryFilter(geom, geomToFilter, tolerance);
 			} catch (IOException e) {
 				throw new WebServiceException(
 						"Could not parse the geometry geojson: "
 								+ e.getMessage());
 			}
 		}
+	}
+
+	/**
+	 * returns the first desired (contained into attrs) geometry descriptor.
+	 * @param schema
+	 * @param attrs
+	 * @return
+	 */
+	public static GeometryDescriptor getGeometryDescriptor(
+			SimpleFeatureType schema, List<String> attrs) throws IllegalStateException {
+		for (AttributeDescriptor attribute : schema
+				.getAttributeDescriptors()) {
+			// skip geometric attributes if so requested
+			if (attribute instanceof GeometryDescriptor) {
+				if (attrs.contains(attribute.getLocalName())){
+					return (GeometryDescriptor)attribute;
+				}
+			}
+		}
+//		for (String name:attrs){
+//			AttributeDescriptor attribDesc = schema.getDescriptor(name);
+//			if (attribDesc.getType() instanceof GeometryType){
+//				
+//			}
+//		}
+		throw new IllegalStateException("Unable to locate a geom called: "+ArrayUtils.toString(attrs));
+	}
+	
+	/**
+	 * returns the first desired (contained into attrs) geometry descriptor.
+	 * @param schema
+	 * @param attrs
+	 * @return
+	 */
+	public static GeometryDescriptor getGeometryDescriptor(
+			SimpleFeatureType schema, String attr) throws IllegalStateException {
+		for (AttributeDescriptor attribute : schema
+				.getAttributeDescriptors()) {
+			// skip geometric attributes if so requested
+			if (attribute instanceof GeometryDescriptor) {
+				if (attr.equalsIgnoreCase(attribute.getLocalName())){
+					return (GeometryDescriptor)attribute;
+				}
+			}
+		}
+		return null;
 	}
 
 //	private static SortOrder getSortOrder(OrderType order) {

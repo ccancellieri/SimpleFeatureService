@@ -12,7 +12,7 @@
 	<sws:annotation-driven />
 	<mvc:annotation-driven/>
 	<context:component-scan base-package="it.geosolutions.sfs" />
-	
+	<!-- 
 	<sws:interceptors>
 		<bean
 			class="org.springframework.ws.server.endpoint.interceptor.PayloadLoggingInterceptor" />
@@ -29,10 +29,10 @@
 
 		<property name="defaultViews">
 			<list>
-				<!-- JSON View -->
+				JSON View
 				<bean class="org.springframework.web.servlet.view.json.MappingJacksonJsonView" />
 
-				<!-- XML View -->
+				XML View
 				<bean class="org.springframework.web.servlet.view.xml.MarshallingView">
 					<constructor-arg>
 						<bean class="org.springframework.oxm.xstream.XStreamMarshaller">
@@ -43,7 +43,7 @@
 			</list>
 		</property>
 	</bean>
-
+-->
 	<!-- sws:dynamic-wsdl id="profile" portTypeName="UserManagement" locationUri="/profileService" targetNamespace="http://shekhar.com/usermanagement/schemas">
       <sws:xsd location="/WEB-INF/userManagement.xsd"/>
 	</sws:dynamic-wsdl-->

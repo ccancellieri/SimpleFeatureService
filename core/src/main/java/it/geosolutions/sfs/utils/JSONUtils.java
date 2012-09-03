@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.geotools.data.simple.SimpleFeatureCollection;
@@ -106,16 +107,16 @@ public abstract class JSONUtils {
         }
     }
 	
-	public static JSONArray writeCapabilities(Logger logger, SimpleFeatureType[] schemas, ReferencedEnvelope[] envelopes) throws Exception {
+	public static JSONArray writeCapabilities(Logger logger, List<SimpleFeatureType> schemas, List<ReferencedEnvelope> envelopes) throws Exception {
 		if (schemas==null || envelopes==null)
 			throw new IllegalArgumentException("Unable to getCapabilities using null arguments");
-		if (schemas.length!=envelopes.length)
+		if (schemas.size()!=envelopes.size())
 			throw new IllegalArgumentException("Unable to getCapabilities using different in length arrays");
 		
 		JSONArray array=new JSONArray();
-		for (int i=0; i<schemas.length; i++){
-			final SimpleFeatureType schema=schemas[i];
-			final ReferencedEnvelope envelope=envelopes[i];
+		for (int i=0; i<schemas.size(); i++){
+			final SimpleFeatureType schema=schemas.get(i);
+			final ReferencedEnvelope envelope=envelopes.get(i);
 			try {
 				array.add(toJSON(schema,envelope));
 			} catch (Exception e){
@@ -150,7 +151,7 @@ public abstract class JSONUtils {
             json.put("name", layerInfo.getName().getLocalPart());
             
             try {
-                json.put("bbox", toJSON(envelope));
+                json.put("bbox", getBB(envelope));
             } catch(Exception e) {
                 throw ((IOException) new IOException("Failed to get the resource bounding box of:" + layerInfo.getName()).initCause(e));
             }
@@ -186,7 +187,7 @@ public abstract class JSONUtils {
             json.put("name", layerInfo.getName().getLocalPart());
             
             try {
-                json.put("bbox", toJSON(layerInfo.getBounds()));
+                json.put("bbox", getBB(layerInfo.getBounds()));
             } catch(Exception e) {
                 throw ((IOException) new IOException("Failed to get the resource bounding box of:" + layerInfo.getName()).initCause(e));
             }
@@ -200,20 +201,7 @@ public abstract class JSONUtils {
     }
     
 
-    /**
-     * Maps a referenced envelope into a json bbox
-     * 
-     * @param bbox
-     * @return
-     */
-    private static JSONArray toJSON(BoundingBox bbox) {
-        JSONArray json = new JSONArray();
-        json.add(bbox.getMinX());
-        json.add(bbox.getMinY());
-        json.add(bbox.getMaxX());
-        json.add(bbox.getMaxY());
-        return json;
-    }
+
 	
 	/**
 	 * 
@@ -231,159 +219,6 @@ public abstract class JSONUtils {
         json.setEncodeFeatureCollectionBounds(!geometryless);
         json.setEncodeFeatureCollectionCRS(!geometryless);
         json.writeFeatureCollection(featureCollection, outWriter);
-//		
-//        GeoJSONBuilder jsonWriter = new GeoJSONBuilder(outWriter);
-//		//
-//		boolean hasGeom = false;
-//
-//		try {
-//			jsonWriter.object().key("type").value("FeatureCollection");
-//			jsonWriter.key("features");
-//			jsonWriter.array();
-//
-//			CoordinateReferenceSystem crs = null;
-//			try {
-//				SimpleFeatureType fType;
-//				List<AttributeDescriptor> types;
-//				FeatureIterator iterator = featureCollection.features();
-//				while (iterator.hasNext()) {
-//					SimpleFeature feature = (SimpleFeature) iterator.next();
-//					jsonWriter.object();
-//					jsonWriter.key("type").value("Feature");
-//					jsonWriter.key("id").value(feature.getID());
-//
-//					fType = feature.getFeatureType();
-//					types = fType.getAttributeDescriptors();
-//
-//					GeometryDescriptor defaultGeomType = fType
-//							.getGeometryDescriptor();
-//
-//					if (crs == null && defaultGeomType != null)
-//						crs = fType.getGeometryDescriptor()
-//								.getCoordinateReferenceSystem();
-//
-//					jsonWriter.key("geometry");
-//					Geometry aGeom = (Geometry) feature.getDefaultGeometry();
-//
-//					if (aGeom == null) {
-//						// In case the default geometry is not set, we will
-//						// just use the first geometry we find
-//						for (int j = 0; j < types.size() && aGeom == null; j++) {
-//							Object value = feature.getAttribute(j);
-//							if (value != null && value instanceof Geometry) {
-//								aGeom = (Geometry) value;
-//							}
-//						}
-//					}
-//					// Write the geometry, whether it is a null or not
-//					if (aGeom != null) {
-//						jsonWriter.writeGeom(aGeom);
-//						hasGeom = true;
-//					} else {
-//						jsonWriter.value(null);
-//					}
-//					if (defaultGeomType != null)
-//						jsonWriter.key("geometry_name").value(
-//								defaultGeomType.getLocalName());
-//
-//					jsonWriter.key("properties");
-//					jsonWriter.object();
-//
-//					for (int j = 0; j < types.size(); j++) {
-//						Object value = feature.getAttribute(j);
-//						AttributeDescriptor ad = types.get(j);
-//
-//						if (value != null) {
-//							if (value instanceof Geometry) {
-//								// This is an area of the spec where they
-//								// decided to 'let convention evolve',
-//								// that is how to handle multiple
-//								// geometries. My take is to print the
-//								// geometry here if it's not the default.
-//								// If it's the default that you already
-//								// printed above, so you don't need it here.
-//								if (ad.equals(defaultGeomType)) {
-//									// Do nothing, we wrote it above
-//									// jsonWriter.value("geometry_name");
-//								} else {
-//									jsonWriter.key(ad.getLocalName());
-//									jsonWriter.writeGeom((Geometry) value);
-//								}
-//							} else {
-//								jsonWriter.key(ad.getLocalName());
-//								jsonWriter.value(value);
-//							}
-//
-//						} else {
-//							jsonWriter.key(ad.getLocalName());
-//							jsonWriter.value(null);
-//						}
-//					}
-//					// Bounding box for feature in properties
-//					ReferencedEnvelope refenv = new ReferencedEnvelope(
-//							feature.getBounds());
-//					if (featureBounding && !refenv.isEmpty())
-//						jsonWriter.writeBoundingBox(refenv);
-//
-//					jsonWriter.endObject(); // end the properties
-//					jsonWriter.endObject(); // end the feature
-//				}
-//			} // catch an exception here?
-//			finally {
-//				// featureCollection.close(iterator);
-//			}
-//
-//			jsonWriter.endArray(); // end features
-//
-//			// Coordinate Referense System, currently only if the namespace is
-//			// EPSG
-//			if (crs != null) {
-//				Set<ReferenceIdentifier> ids = crs.getIdentifiers();
-//				// WKT defined crs might not have identifiers at all
-//				if (ids != null && ids.size() > 0) {
-//					NamedIdentifier namedIdent = (NamedIdentifier) ids
-//							.iterator().next();
-//					String csStr = namedIdent.getCodeSpace().toUpperCase();
-//
-//					if (csStr.equals("EPSG")) {
-//						jsonWriter.key("crs");
-//						jsonWriter.object();
-//						jsonWriter.key("type").value(csStr);
-//						jsonWriter.key("properties");
-//						jsonWriter.object();
-//						jsonWriter.key("code");
-//						jsonWriter.value(namedIdent.getCode());
-//						jsonWriter.endObject(); // end properties
-//						jsonWriter.endObject(); // end crs
-//					}
-//				}
-//			}
-//
-//			// Bounding box for featurecollection
-//			if (hasGeom && featureBounding) {
-//				ReferencedEnvelope e = featureCollection.getBounds();
-//
-//				if (e == null) {
-//					throw new Exception(
-//							"Unable to get Envelope for featurecollection"); // TODO
-//																				// throw
-//																				// a
-//																				// more
-//																				// specific
-//																				// exception
-//				} else {
-//					jsonWriter.writeBoundingBox(e);
-//				}
-//			}
-//
-//			jsonWriter.endObject(); // end featurecollection
-//
-//		} catch (JSONException jsonException) {
-//
-//		} finally {
-//			outWriter.flush();
-//		}
-
 	}
 
 	public static JSONArray getBB(BoundingBox env)
@@ -394,14 +229,6 @@ public abstract class JSONUtils {
 		array.add(env.getMaxX());
 		array.add(env.getMaxY());
 		return array;
-//		GeoJSONBuilder jsonWriter = new GeoJSONBuilder(outWriter);
-//		try {
-//			jsonWriter.writeBoundingBox(env); // TODO check
-//		} catch (JSONException jsonException) {
-//
-//		} finally {
-//			outWriter.flush();
-//		}
 	}
 
 }
