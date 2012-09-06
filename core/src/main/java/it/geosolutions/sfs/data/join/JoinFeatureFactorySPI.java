@@ -18,59 +18,60 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package it.geosolutions.sfs.data.postgis;
-
-import it.geosolutions.sfs.data.FeatureFactory;
-import it.geosolutions.sfs.data.FeatureFactorySPI;
-import it.geosolutions.sfs.data.PropertiesUtils;
-import it.geosolutions.sfs.data.dw.DWFeatureFactory;
+package it.geosolutions.sfs.data.join;
 
 import java.io.File;
 import java.util.Properties;
 
+import it.geosolutions.sfs.data.FeatureFactory;
+import it.geosolutions.sfs.data.FeatureFactorySPI;
+import it.geosolutions.sfs.data.PropertiesUtils;
+
 /**
  * 
  * @author Carlo Cancellieri - ccancellieri@hotmail.com
- * 
+ *
  */
-public class PGisFeatureFactorySPI extends FeatureFactorySPI {
+public class JoinFeatureFactorySPI extends FeatureFactorySPI {
 
-    private final File properties;
 
-    private Properties prop;
+    private final File dsProperties;
+    private final File dwProperties;
 
-    public PGisFeatureFactorySPI(final File properties, final int priority) throws Exception {
-        super(priority);
-        this.properties = properties;
-    }
+    private Properties dsProp;
+    private Properties dwProp;
 
-    public Properties getProp() {
-        return prop;
-    }
+            
+	public JoinFeatureFactorySPI(final int priority,final File dsProperties,final File dwProperties) throws Exception {
+		super(priority);
+		this.dwProperties=dwProperties;
+		this.dsProperties=dsProperties;
+	}
 
-    /**
+	/**
 	 * 
 	 */
-    @Override
-    public boolean canCreate() throws Exception {
-        try {
-            prop = PropertiesUtils.loadPropertiesFromURL(properties.toURI().toURL());
-
-            // TODO may we want to check the database settings here???
-
-        } catch (Exception e) {
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public FeatureFactory getFeatureFactory() throws Exception {
-        return new PGisFeatureFactory(PGisFeatureFactory.class.getSimpleName(), prop,false);
-    }
+	@Override
+	public boolean canCreate() throws Exception {
+		try {
+		    dsProp = PropertiesUtils.loadPropertiesFromURL(dsProperties.toURI().toURL());
+		    dwProp = PropertiesUtils.loadPropertiesFromURL(dwProperties.toURI().toURL());
+			// TODO may we want to check other here???
+			
+		} catch (Exception e){
+			return false;
+		}
+		return true; 
+	}
+	
+	@Override
+	public FeatureFactory getFeatureFactory() throws Exception {
+		return new JoinFeatureFactory(dsProp,dwProp);
+	}
 
     @Override
     public FeatureFactory createFeatureFactory(String name, boolean noGeom) throws Exception {
-        return new PGisFeatureFactory(name, prop,noGeom);
+        return new JoinFeatureFactory(dsProp,dwProp);
     }
+
 }

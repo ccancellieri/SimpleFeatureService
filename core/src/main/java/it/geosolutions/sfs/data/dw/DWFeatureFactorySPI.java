@@ -21,40 +21,57 @@
 package it.geosolutions.sfs.data.dw;
 
 import it.geosolutions.sfs.data.FeatureFactory;
-import it.geosolutions.sfs.data.postgis.PGisFeatureFactorySPI;
+import it.geosolutions.sfs.data.FeatureFactorySPI;
+import it.geosolutions.sfs.data.PropertiesUtils;
 
 import java.io.File;
+import java.util.Properties;
 
 /**
  * 
  * @author Carlo Cancellieri - ccancellieri@hotmail.com
- *
+ * 
  */
-public class DWFeatureFactorySPI extends PGisFeatureFactorySPI {
+public class DWFeatureFactorySPI extends FeatureFactorySPI {
 
-	public DWFeatureFactorySPI(final File properties, final int priority) throws Exception {
-		super(properties,priority);
-	}
+    private final File properties;
 
-	/**
-	 * 
-	 */
-	@Override
-	public boolean canCreate() throws Exception {
-		try {
-			super.canCreate();
-			
-			// TODO may we want to check other here???
-			
-		} catch (Exception e){
-			return false;
-		}
-		return true; 
-	}
-	
-	@Override
-	public FeatureFactory getFeatureFactory() throws Exception {
-		return new DWFeatureFactory(getProp());
-	}
+    private Properties prop;
+
+    public DWFeatureFactorySPI(final File properties, final int priority) throws Exception {
+        super(priority);
+        this.properties = properties;
+    }
+
+    public Properties getProp() {
+        return prop;
+    }
+
+    /**
+     * 
+     */
+    @Override
+    public boolean canCreate() throws Exception {
+        try {
+            prop = PropertiesUtils.loadPropertiesFromURL(properties.toURI().toURL());
+
+            
+            // TODO may we want to check the database settings here???
+
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public FeatureFactory getFeatureFactory() throws Exception {
+        return new DWFeatureFactory(DWFeatureFactory.class.getSimpleName(),getProp(),false);
+    }
+    
+    @Override
+    public FeatureFactory createFeatureFactory(String name,boolean noGeom) throws Exception {
+        return new DWFeatureFactory(name,getProp(),noGeom);
+    }
 
 }

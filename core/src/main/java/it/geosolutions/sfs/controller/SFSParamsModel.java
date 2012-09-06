@@ -20,11 +20,14 @@
  */
 package it.geosolutions.sfs.controller;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
 import org.apache.commons.collections.map.CaseInsensitiveMap;
+import org.apache.commons.lang.ArrayUtils;
 import org.opengis.filter.sort.SortOrder;
 
 /**
@@ -301,10 +304,10 @@ public class SFSParamsModel {
 	}
 	
 	public String getHintsValueAsString(String key) {
-		if (key==null)
+		if (key==null || hints==null)
 			return null;
 		Object o=hints.get(key);
-		return (o==null)?"":(String) o;
+		return (o==null)?null:(String) o;
 	}
 
 	public void setHints(CaseInsensitiveMap hints) {
@@ -318,6 +321,36 @@ public class SFSParamsModel {
 	public void setRequest(HttpServletRequest request) {
 		this.request = request;
 	}
+
+    private static List<String> purgeHintsParams(SFSParamsModel params, String[] attrs) {
+        List<String> ret = new ArrayList<String>();
+        if (params.getHints() == null || attrs == null)
+            return ret;
+        for (String attrName : attrs) {
+            String paramName = params.getHintsValueAsString(attrName);
+            if (paramName != null) {
+                ret.add(paramName);
+            }
+        }
+        return ret;
+    }
+
+    /**
+     * @param attrsList 
+     * @param incomingAttrs
+     * @return Returns a list containing the intersection of attrsList with incomingAttrs
+     */
+    public static List<String> purgeAttrs(String[] attrsList, String[] incomingAttrs) {
+        List<String> ret = new ArrayList<String>();
+        if (incomingAttrs == null || attrsList == null)
+            return ret;
+        for (String attrName : attrsList) {
+            if (ArrayUtils.contains(incomingAttrs, attrName)) {
+                ret.add(attrName);
+            }
+        }
+        return ret;
+    }
 
 }
 

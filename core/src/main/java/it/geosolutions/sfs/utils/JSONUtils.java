@@ -27,12 +27,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import net.sf.json.util.JSONBuilder;
+
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.geojson.feature.FeatureJSON;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
 import org.json.simple.JSONArray;
-import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.feature.type.AttributeDescriptor;
 import org.opengis.geometry.BoundingBox;
@@ -52,23 +53,42 @@ import com.vividsolutions.jts.geom.Polygon;
 /**
  * 
  * @author Carlo Cancellieri - ccancellieri@hotmail.com
- *
+ * 
  */
 public abstract class JSONUtils {
-	
-	public static JSONArray getDescriptor(SimpleFeatureType schema) throws Exception {
-		if (schema==null)
-			throw new IllegalArgumentException("Unable to getDescriptor using null argument");
-		JSONArray array=new JSONArray();
-		Map<String, String> attributes = new LinkedHashMap<String, String>();
-	    for (AttributeDescriptor att : schema.getAttributeDescriptors()) {
-	        attributes.put(att.getLocalName(), findAttributeType(att));
-	    }
-	    array.add(attributes);
-	    return array;
-	}
-    
-	private static String findAttributeType(AttributeDescriptor att) {
+
+//    public static JSONArray getDescriptor(SimpleFeatureType schema) throws Exception {
+//        if (schema == null)
+//            throw new IllegalArgumentException("Unable to getDescriptor using null argument");
+//        JSONArray array = new JSONArray();
+//
+//        Map<String, String> attributes = new LinkedHashMap<String, String>();
+//        for (AttributeDescriptor att : schema.getAttributeDescriptors()) {
+//            attributes.put(att.getLocalName(), findAttributeType(att));
+//        }
+//        array.add(attributes);
+//        return array;
+//    }
+
+    public static void writeDescriptor(Logger logger, SimpleFeatureType schema, Writer w)
+            throws IllegalArgumentException {
+        if (schema == null || w == null)
+            throw new IllegalArgumentException("Unable to writeDescriptor using null arguments");
+
+        final JSONBuilder builder = new JSONBuilder(w);
+        builder.array();
+        builder.object();
+        for (AttributeDescriptor att : schema.getAttributeDescriptors()) {
+
+            builder.key(att.getLocalName());
+            builder.value(findAttributeType(att));
+
+        }
+        builder.endObject();
+        builder.endArray();
+    }
+
+    private static String findAttributeType(AttributeDescriptor att) {
         Class binding = att.getType().getBinding();
         if (Geometry.class.isAssignableFrom(binding)) {
             return findGeometryType(binding);
@@ -82,8 +102,8 @@ public abstract class JSONUtils {
             return "string";
         }
     }
-	
-	private static String findGeometryType(Class binding) {
+
+    private static String findGeometryType(Class binding) {
         if (GeometryCollection.class.isAssignableFrom(binding)) {
             if (MultiPoint.class.isAssignableFrom(binding)) {
                 return "MultiPoint";
@@ -106,92 +126,118 @@ public abstract class JSONUtils {
             }
         }
     }
-	
-	public static JSONArray writeCapabilities(Logger logger, List<SimpleFeatureType> schemas, List<ReferencedEnvelope> envelopes) throws Exception {
-		if (schemas==null || envelopes==null)
-			throw new IllegalArgumentException("Unable to getCapabilities using null arguments");
-		if (schemas.size()!=envelopes.size())
-			throw new IllegalArgumentException("Unable to getCapabilities using different in length arrays");
-		
-		JSONArray array=new JSONArray();
-		for (int i=0; i<schemas.size(); i++){
-			final SimpleFeatureType schema=schemas.get(i);
-			final ReferencedEnvelope envelope=envelopes.get(i);
-			try {
-				array.add(toJSON(schema,envelope));
-			} catch (Exception e){
-				if (logger!=null){
-					if (logger.isDebugEnabled()){
-						logger.debug(e.getLocalizedMessage(),e);
-					} else if (logger.isErrorEnabled()){
-						logger.error(e.getLocalizedMessage());
-					}
-				}
-			}
-		}
-        return array;
-	}
-	
-	/**
-	 * 
-     * Maps a layer info to the capabilities json structure. Using a linked hash map under covers to
-     * preserve the order of the attributes
-     * 
-	 * @param layerInfo
-	 * @param envelope
-	 * @return map
-	 * @throws IOException
-	 * @throws IllegalArgumentException
-	 */
-    protected static Map<String,Object> toJSON(SimpleFeatureType layerInfo, ReferencedEnvelope envelope) throws IOException,IllegalArgumentException {
-    	if (layerInfo==null || envelope==null)
-			throw new IllegalArgumentException("Unable to getDescriptor using null arguments");
-        try {
-            Map<String,Object> json = new LinkedHashMap<String,Object>();
-            json.put("name", layerInfo.getName().getLocalPart());
-            
-            try {
-                json.put("bbox", getBB(envelope));
-            } catch(Exception e) {
-                throw ((IOException) new IOException("Failed to get the resource bounding box of:" + layerInfo.getName()).initCause(e));
-            }
-           
-            CoordinateReferenceSystem crs=layerInfo.getCoordinateReferenceSystem();
-            if (crs!=null)
-            	json.put("crs", "urn:ogc:def:crs:EPSG:"+CRS.lookupEpsgCode(crs, false));
-            else
-                throw (new IOException("Failed to get the resource crs:" + layerInfo.getName() + " bb: "+envelope.toString()));
-            
-            json.put("axisorder", "xy");
 
-            return json;
-        } catch (FactoryException e) {
-            throw ((IOException) new IOException("Failed to lookup the EPSG code").initCause(e));
+    public static void writeCapabilities(Logger logger, List<SimpleFeatureType> schemas,
+            List<ReferencedEnvelope> envelopes, Writer w) throws Exception {
+        if (schemas == null || envelopes == null || w == null)
+            throw new IllegalArgumentException("Unable to writeCapabilities using null arguments");
+        if (schemas.size() != envelopes.size())
+            throw new IllegalArgumentException(
+                    "Unable to writeCapabilities using different in length arrays");
+        JSONBuilder builder = new JSONBuilder(w);
+        builder.array();
+        for (int i = 0; i < schemas.size(); i++) {
+            final SimpleFeatureType schema = schemas.get(i);
+            final ReferencedEnvelope envelope = envelopes.get(i);
+
+            if (schema == null || envelope == null)
+                throw new IllegalArgumentException("Unable to writeDescriptor using null arguments");
+            try {
+
+                builder.object();
+
+                builder.key("name");
+                builder.value(schema.getName().getLocalPart());
+                
+//                    builder.key("bbox");
+                // writeBB(envelope);
+                writeBB(envelope,builder);
+
+                CoordinateReferenceSystem crs = schema.getCoordinateReferenceSystem();
+                if (crs != null) {
+                    builder.key("crs");
+                    builder.value("urn:ogc:def:crs:EPSG:" + CRS.lookupEpsgCode(crs, false));
+                } else
+                    throw (new IOException("Failed to get the resource crs:" + schema.getName()
+                            + " bb: " + envelope.toString()));
+
+                builder.key("axisorder");
+                builder.value("xy");
+
+            } catch (Exception e) {
+                if (logger != null) {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(e.getLocalizedMessage(), e);
+                    } else if (logger.isErrorEnabled()) {
+                        logger.error(e.getLocalizedMessage());
+                    }
+                }
+            } finally {
+                builder.endObject();
+            }
         }
+        builder.endArray();
     }
-    
-   
-	/**
-     * Maps a layer info to the capabilities json structure. Using a linked hash map under covers to
-     * preserve the order of the attributes
+
+    public static JSONArray getCapabilities(Logger logger, List<SimpleFeatureType> schemas,
+            List<ReferencedEnvelope> envelopes) throws Exception {
+        if (schemas == null || envelopes == null)
+            throw new IllegalArgumentException("Unable to getCapabilities using null arguments");
+        if (schemas.size() != envelopes.size())
+            throw new IllegalArgumentException(
+                    "Unable to getCapabilities using different in length arrays");
+
+        JSONArray array = new JSONArray();
+        for (int i = 0; i < schemas.size(); i++) {
+            final SimpleFeatureType schema = schemas.get(i);
+            final ReferencedEnvelope envelope = envelopes.get(i);
+            try {
+                array.add(toJSON(schema, envelope));
+            } catch (Exception e) {
+                if (logger != null) {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(e.getLocalizedMessage(), e);
+                    } else if (logger.isErrorEnabled()) {
+                        logger.error(e.getLocalizedMessage());
+                    }
+                }
+            }
+        }
+        return array;
+    }
+
+    /**
+     * 
+     * Maps a layer info to the capabilities json structure. Using a linked hash map under covers to preserve the order of the attributes
      * 
      * @param layerInfo
-     * @return
+     * @param envelope
+     * @return map
      * @throws IOException
-     * @deprecated unused
+     * @throws IllegalArgumentException
      */
-    private static Map<String,Object> toJSON(SimpleFeature layerInfo) throws IOException {
-        
+    protected static Map<String, Object> toJSON(SimpleFeatureType layerInfo,
+            ReferencedEnvelope envelope) throws IOException, IllegalArgumentException {
+        if (layerInfo == null || envelope == null)
+            throw new IllegalArgumentException("Unable to getDescriptor using null arguments");
         try {
-            Map<String,Object> json = new LinkedHashMap<String,Object>();
+            Map<String, Object> json = new LinkedHashMap<String, Object>();
             json.put("name", layerInfo.getName().getLocalPart());
-            
+
             try {
-                json.put("bbox", getBB(layerInfo.getBounds()));
-            } catch(Exception e) {
-                throw ((IOException) new IOException("Failed to get the resource bounding box of:" + layerInfo.getName()).initCause(e));
+                json.put("bbox", getBB(envelope));
+            } catch (Exception e) {
+                throw ((IOException) new IOException("Failed to get the resource bounding box of:"
+                        + layerInfo.getName()).initCause(e));
             }
-            json.put("crs", "urn:ogc:def:crs:EPSG:" + CRS.lookupEpsgCode(layerInfo.getBounds().getCoordinateReferenceSystem(), false));
+
+            CoordinateReferenceSystem crs = layerInfo.getCoordinateReferenceSystem();
+            if (crs != null)
+                json.put("crs", "urn:ogc:def:crs:EPSG:" + CRS.lookupEpsgCode(crs, false));
+            else
+                throw (new IOException("Failed to get the resource crs:" + layerInfo.getName()
+                        + " bb: " + envelope.toString()));
+
             json.put("axisorder", "xy");
 
             return json;
@@ -199,36 +245,52 @@ public abstract class JSONUtils {
             throw ((IOException) new IOException("Failed to lookup the EPSG code").initCause(e));
         }
     }
-    
 
-
-	
-	/**
-	 * 
-	 * @param featureCollection
-	 * @param featureBounding
-	 *            Generate bounds for every feature?
-	 * @param outWriter
-	 * @throws Exception
-	 */
-	public static void writeFeatureCollection(
-			SimpleFeatureCollection featureCollection, boolean featureBounding,
-			Writer outWriter) throws Exception {
+    /**
+     * 
+     * @param featureCollection
+     * @param featureBounding Generate bounds for every feature?
+     * @param outWriter
+     * @throws Exception
+     */
+    public static void writeFeatureCollection(SimpleFeatureCollection featureCollection,
+            boolean featureBounding, Writer outWriter) throws Exception {
         final FeatureJSON json = new FeatureJSON();
         boolean geometryless = featureCollection.getSchema().getGeometryDescriptor() == null;
         json.setEncodeFeatureCollectionBounds(!geometryless);
         json.setEncodeFeatureCollectionCRS(!geometryless);
         json.writeFeatureCollection(featureCollection, outWriter);
-	}
+    }
 
-	public static JSONArray getBB(BoundingBox env)
-			throws Exception {
-		JSONArray array=new JSONArray();
-		array.add(env.getMinX());
-		array.add(env.getMinY());
-		array.add(env.getMaxX());
-		array.add(env.getMaxY());
-		return array;
-	}
+    private static JSONArray getBB(BoundingBox env) throws Exception {
+        JSONArray array = new JSONArray();
+        array.add(env.getMinX());
+        array.add(env.getMinY());
+        array.add(env.getMaxX());
+        array.add(env.getMaxY());
+        return array;
+    }
+
+    public static void writeBB(BoundingBox env, Writer w) throws Exception {
+        JSONBuilder builder = new JSONBuilder(w);
+        builder.key("bbox");
+        builder.array();
+        builder.value(env.getMinX());
+        builder.value(env.getMinY());
+        builder.value(env.getMaxX());
+        builder.value(env.getMaxY());
+        builder.endArray();
+    }
+    
+    public static void writeBB(BoundingBox env, JSONBuilder builder) throws Exception {
+        builder.key("bbox");
+        builder.array();
+        builder.value(env.getMinX());
+        builder.value(env.getMinY());
+        builder.value(env.getMaxX());
+        builder.value(env.getMaxY());
+        builder.endArray();
+    }
+
 
 }

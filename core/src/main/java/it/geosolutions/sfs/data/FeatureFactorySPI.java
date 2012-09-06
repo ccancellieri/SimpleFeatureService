@@ -51,6 +51,13 @@ public abstract class FeatureFactorySPI {
 	 * @throws Exception
 	 */
 	public abstract FeatureFactory getFeatureFactory() throws Exception;
+	
+	/**
+         * Actually instantiate the FeatureFactory
+         * @return the newly created FeatureFactory
+         * @throws Exception
+         */
+        public abstract FeatureFactory createFeatureFactory(String name, boolean noGeom) throws Exception;
 
 	/**
 	 * @return an integer representing the priority of this FeatureFactory

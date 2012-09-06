@@ -129,8 +129,6 @@ public abstract class GTTools {
 
 		return query;
 	}
-
-	
 	
 	private static void applyFilter(Map<String, String[]> form, String[] attrs, String fid, String[] queryable, String crs, String geometry, Double tolerance, String bbox, String lon, String lat, SimpleFeatureType schema, Query query) {
 		if (fid != null) {

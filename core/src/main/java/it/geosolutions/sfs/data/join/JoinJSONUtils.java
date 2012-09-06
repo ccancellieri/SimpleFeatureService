@@ -18,7 +18,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package it.geosolutions.sfs.data.dw;
+package it.geosolutions.sfs.data.join;
 
 import it.geosolutions.sfs.utils.GeoJSONBuilder;
 
@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -42,7 +41,6 @@ import net.sf.json.JSONObject;
 import net.sf.json.JSONSerializer;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.ArrayUtils;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.geojson.feature.FeatureJSON;
@@ -67,7 +65,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * @author Carlo Cancellieri - ccancellieri@hotmail.com
  * 
  */
-public class DWJSONUtils {
+public class JoinJSONUtils {
 
     public static JSONObject getDWJSON(final File sourceFile) throws IOException, ParseException {
 
@@ -186,8 +184,8 @@ public class DWJSONUtils {
      * @throws Exception
      */
     public static void writeDWFeatureCollection(SimpleFeatureType schema, SimpleFeatureCollection featureCollection,
-            List<String> attrName, Map<String, Map<String, String>> values,
-            List<String> appendAttrNames, boolean includePK, String dsPK, boolean featureBounding,
+           Map<String, Map<String, String>> values,
+           boolean includePK, String dsPK, boolean featureBounding,
             Writer outWriter) throws Exception {
         final FeatureJSON json = new FeatureJSON();
         boolean geometryless = featureCollection.getSchema().getGeometryDescriptor() == null;
@@ -211,7 +209,7 @@ public class DWJSONUtils {
                 List<AttributeDescriptor> types;
                 iterator = featureCollection.features();
                 int pkPos = -1;
-                Collection<String> attr = null;
+//                Collection<String> attr = null;
                 while (iterator.hasNext()) {
                     SimpleFeature feature = (SimpleFeature) iterator.next();
                     jsonWriter.object();
@@ -240,7 +238,7 @@ public class DWJSONUtils {
                     // Write the geometry, whether it is a null or not
                     if (aGeom != null) {
                         // ///////////////////////////////////////////////////////////////////////////////////// TODO
-                        Geometry geom = DouglasPeuckerSimplifier.simplify(aGeom, 0.01);
+                        Geometry geom = null;//DouglasPeuckerSimplifier.simplify(aGeom, 0.01);
                         jsonWriter.writeGeom(geom != null && !geom.isEmpty() ? geom : aGeom);
                         hasGeom = true;
                     } else {
@@ -251,7 +249,7 @@ public class DWJSONUtils {
 
                     if (first) {
                         // store the pg_key position
-                        attr = values.remove(MEDATADA_KEY).keySet();
+//                        attr = values.get(MEDATADA_KEY).keySet();
                         for (int j = 1; j < types.size(); j++) {
                             AttributeDescriptor ad = types.get(j);
                             if (ad.getLocalName().equalsIgnoreCase(dsPK)) {
@@ -261,12 +259,12 @@ public class DWJSONUtils {
                         }
                         if (pkPos == -1)
                             throw new IllegalArgumentException("Unable to locate the pk:" + dsPK);
-
-                        if (!attr.containsAll(appendAttrNames))
-                            throw new IllegalArgumentException(
-                                    "Unable to locate the an attribute called:" + appendAttrNames
-                                            + ".\nUse one of the following: "
-                                            + ArrayUtils.toString(attr));
+//
+//                        if (!attr.containsAll(appendAttrNames))
+//                            throw new IllegalArgumentException(
+//                                    "Unable to locate the an attribute called:" + appendAttrNames
+//                                            + ".\nUse one of the following: "
+//                                            + ArrayUtils.toString(attr));
 
                         first = false;
                     }
@@ -278,10 +276,15 @@ public class DWJSONUtils {
                     Map<String, String> item = null;
                     Object pkObjvalue = feature.getAttribute(pkPos);
                     if (pkObjvalue == null) { // no join value found skip row
-                        continue;
+                        throw new IllegalArgumentException("No primary key found into datastore");
                     } else {
                         pkValue = (String) pkObjvalue;
                         item = values.get(pkValue);
+                        if (item==null){
+                            // no join value found skip row
+//                            continue;
+                        }
+
                     }
                     for (int j = 0; j < types.size(); j++) {
                         AttributeDescriptor ad = types.get(j);
@@ -296,7 +299,6 @@ public class DWJSONUtils {
                         if (value == null) {
                             jsonWriter.key(name);
                             jsonWriter.value(null);
-                            continue;
                         } else if (value instanceof Geometry) {
                             // This is an area of the spec where they
                             // decided to 'let convention evolve',

@@ -4,13 +4,17 @@
        xmlns:sws="http://www.springframework.org/schema/web-services"
        xmlns:p="http://www.springframework.org/schema/p"
        xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:cache="http://www.springframework.org/schema/cache"
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+      http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache-3.1.xsd
        http://www.springframework.org/schema/web-services http://www.springframework.org/schema/web-services/web-services-2.0.xsd
        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd">
        
 	<context:component-scan base-package="ït.geosolutions.sfs"/>
 	
     <sws:annotation-driven/>
+    
+    
    
     <bean id="sfs-placeholderConfig" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer" >
         <property name="locations">
@@ -24,16 +28,21 @@
         <property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE"/>
     </bean>
     
-    
-    <bean id="PGisFeatureFactory" class="it.geosolutions.sfs.data.postgis.PGisFeatureFactorySPI" >
-        <constructor-arg index="0" type="java.io.File" value="${PGisFeatureFactory.datastore.properties}" />
-        <constructor-arg index="1" value="${PGisFeatureFactory.priority}" />
+    <bean id="JoinFeatureFactory" class="it.geosolutions.sfs.data.join.JoinFeatureFactorySPI" >
+        <constructor-arg index="0" value="${PGisFeatureFactory.priority}" />
+        <constructor-arg index="1" type="java.io.File" value="${PGisFeatureFactory.datastore.properties}" />
+        <constructor-arg index="2" type="java.io.File" value="${DWFeatureFactory.datastore.properties}" />
     </bean>
     
-    <bean id="DWFeatureFactory" class="it.geosolutions.sfs.data.dw.DWFeatureFactorySPI" >
-        <constructor-arg index="0" type="java.io.File" value="${DWFeatureFactory.datastore.properties}" />
-        <constructor-arg index="1" value="${DWFeatureFactory.priority}" />
-    </bean>
+<!--     <bean id="PGisFeatureFactory" class="it.geosolutions.sfs.data.postgis.PGisFeatureFactorySPI" > -->
+<!--         <constructor-arg index="0" type="java.io.File" value="${PGisFeatureFactory.datastore.properties}" /> -->
+<!--         <constructor-arg index="1" value="${PGisFeatureFactory.priority}" /> -->
+<!--     </bean> -->
+    
+<!--     <bean id="DWFeatureFactory" class="it.geosolutions.sfs.data.dw.DWFeatureFactorySPI" > -->
+<!--         <constructor-arg index="0" type="java.io.File" value="${DWFeatureFactory.datastore.properties}" /> -->
+<!--         <constructor-arg index="1" value="${DWFeatureFactory.priority}" /> -->
+<!--     </bean> -->
     
     <!-- 
     <bean id="sfs-dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
@@ -43,5 +52,12 @@
         <property name="password" value="${jdbc.password}"/>
     </bean>
     -->
+    
+<!--     <cache:annotation-driven /> -->
+    
+<!--     Infinispan cache manager -->
+<!-- 	<bean id="cacheManager" -->
+<!--           class="org.infinispan.spring.provider.SpringEmbeddedCacheManagerFactoryBean" -->
+<!--           p:configurationFileLocation="classpath:infinispan-config.xml" /> -->
    
 </beans>

@@ -34,7 +34,7 @@ import org.opengis.feature.simple.SimpleFeatureType;
  * @author Carlo Cancellieri - ccancellieri@hotmail.com
  *
  */
-public abstract class FeatureFactory {
+public interface FeatureFactory {
 
 	/**
 	 * 
@@ -101,13 +101,13 @@ public abstract class FeatureFactory {
 	public abstract void writeData(SFSParamsModel params, HttpServletResponse response) throws Exception;
 
 	/**
-	 * @see {@link SFSController#describeLayer(String)}
-	 * @param layerName the layerName
-	 * @return A SimpleFeatureType containing the features schema
-	 * @throws Exception
+	 * 
+	 * @param layerName
+	 * @param request
+	 * @param response
 	 */
-	public abstract SimpleFeatureType getSimpleFeatureType(String layerName)
-			throws Exception;
+	public abstract void writeDescribeLayer(String layerName,
+	            HttpServletResponse request, HttpServletResponse response) throws Exception;
 	
 	/**
 	 * 

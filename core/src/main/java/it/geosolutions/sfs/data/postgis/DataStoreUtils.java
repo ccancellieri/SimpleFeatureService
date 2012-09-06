@@ -20,17 +20,12 @@
  */
 package it.geosolutions.sfs.data.postgis;
 
-import java.io.BufferedInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Serializable;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.commons.io.IOUtils;
 import org.geotools.data.DataAccessFactory.Param;
 import org.geotools.data.DataStore;
 import org.geotools.data.DataStoreFactorySpi;
@@ -49,41 +44,8 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class DataStoreUtils {
 
-	private final static Logger LOGGER = LoggerFactory.getLogger(DataStoreUtils.class);
+	public final static Logger LOGGER = LoggerFactory.getLogger(DataStoreUtils.class);
 	
-	/**
-	 * 
-	 * @param propsURL
-	 * @return
-	 * @throws IOException 
-	 */
-	public static Properties loadPropertiesFromURL(URL propsURL) throws IOException {
-	    final Properties properties = new Properties();
-	    InputStream stream = null;
-	    InputStream openStream = null;
-	    try {
-	        openStream = propsURL.openStream();
-	        stream = new BufferedInputStream(openStream);
-	        properties.load(stream);
-	    } catch (FileNotFoundException e) {
-	        if (LOGGER.isErrorEnabled())
-	            LOGGER.error(e.getLocalizedMessage(), e);
-	        throw e;
-	    } catch (IOException e) {
-	        if (LOGGER.isErrorEnabled())
-	            LOGGER.error(e.getLocalizedMessage(), e);
-	        throw e;
-	    } finally {
-	
-	        if (stream != null)
-	            IOUtils.closeQuietly(stream);
-	        if (openStream != null)
-	            IOUtils.closeQuietly(openStream);
-	
-	    }
-	    return properties;
-	}
-
 	/**
 	 * attrName IN (key1,key2,...,keyN)
 	 * 
@@ -136,25 +98,6 @@ public abstract class DataStoreUtils {
 		return ECQL.toFilter(query.toString());
 	}
 	
-	/**
-	 * returns the geometry name if specified into the properties object in the following form:<br>
-	 * FEATUREFACTORY_NAME.RESOURCE_NAME.geometry=GEOMETRYNAME
-	 * @param c
-	 * @param prop
-	 * @param resourceName
-	 * @return
-	 */
-	public static String getGeometryForResource(Class<?> c, Properties prop, String resourceName){
-		return prop.getProperty(c.getSimpleName()+"."+resourceName+".geometry");
-	}
-	
-	public static String[] getAllResources(Class<?> c, Properties prop){
-		String allResources=prop.getProperty(c.getSimpleName()+".resources");
-		if (allResources==null)
-			throw new IllegalStateException("No configured resources were found");
-		return allResources.split(",");
-	}
-
 	/**
 	 * return the datastore or null
 	 * 

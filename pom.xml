@@ -13,6 +13,7 @@
 		<jetty.version>6.1.8</jetty.version>
 		<final.name>sfs</final.name>
 		<geotools.version>8.0-RC2</geotools.version>
+		<infinispan.version>5.1.6.FINAL</infinispan.version>
 	</properties>
 
 	<build>
@@ -188,12 +189,40 @@
 				<enabled>true</enabled>
 			</releases>
 		</repository>
+		<repository>
+			<id>jboss-public-repository-group</id>
+			<name>JBoss Public Maven Repository Group</name>
+			<url>http://repository.jboss.org/nexus/content/groups/public/</url>
+			<releases>
+			   <enabled>true</enabled>
+			   <updatePolicy>never</updatePolicy>
+			</releases>
+			<snapshots>
+			   <enabled>true</enabled>
+			   <updatePolicy>never</updatePolicy>
+			</snapshots>
+		</repository>
 	</repositories>
 	<!-- =========================================================== -->
 	<!-- Plugin repositories. -->
 	<!-- This is where Maven looks for plugin dependencies. -->
 	<!-- =========================================================== -->
 	<pluginRepositories>
+	
+
+		 <pluginRepository>
+			<id>jboss-public-repository-group</id>
+			<name>JBoss Public Maven Repository Group</name>
+			<url>http://repository.jboss.org/nexus/content/groups/public/</url>
+			<releases>
+			   <enabled>true</enabled>
+			   <updatePolicy>never</updatePolicy>
+			</releases>
+			<snapshots>
+			   <enabled>false</enabled>
+			   <updatePolicy>never</updatePolicy>
+			</snapshots>
+		 </pluginRepository>
 		<pluginRepository>
 			<id>codehaus-snapshot-plugins</id>
 			<name>codehaus-shapshot-plugins</name>
